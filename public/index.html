@@ -3,74 +3,57 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>LEYLI MEDIA Premium</title>
+  <title>LEYLI MEDIA</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="glow"></div>
+  <header>
+    <div class="logo">LEYLI MEDIA</div>
+  </header>
 
-  <main class="app">
-    <header class="brand">
-      <img class="logo" src="logo.png" alt="Leyli Media">
-    </header>
+  <section id="screen-loading" class="screen screen-center">
+    <div class="spinner"></div>
+  </section>
 
-    <section id="screen-loading" class="screen">
-      <div class="spinner"></div>
-      <p class="muted">Yuklanmoqda...</p>
-    </section>
+  <section id="screen-error" class="screen screen-center hidden">
+    <h1>LEYLI MEDIA</h1>
+    <p class="lead">Mini ilovani @LeyliMedia_bot orqali oching.</p>
+  </section>
 
-    <section id="screen-error" class="screen hidden">
-      <h1>Mini ilovani Telegram orqali oching</h1>
-      <p class="muted">Premium obuna @LeyliMedia_bot ichida ishlaydi.</p>
-    </section>
+  <section id="screen-home" class="screen screen-hero hidden">
+    <p class="eyebrow">LEYLI MEDIA</p>
+    <h1>LEYLI<br>MEDIA</h1>
+    <p class="lead">
+      Eksklyuziv musiqa, yangi ijodiy loyihalar, audio materiallar
+      va maxsus kontent — barchasi bitta Premium Telegram kanalda.
+    </p>
+    <button type="button" class="btn btn-outline" id="buy-btn">Premium obuna</button>
+  </section>
 
-    <section id="screen-home" class="screen hidden">
-      <p class="hello" id="hello"></p>
-      <h1>Obunalar to‘plami</h1>
+  <section id="screen-pay" class="screen screen-card hidden">
+    <div class="price-card">
+      <p class="eyebrow">PREMIUM OBUNA</p>
+      <h2>LEYLI MEDIA</h2>
+      <p class="price">20 000 so‘m / 1 oy</p>
       <p class="lead">
-        Tanlangan obuna to‘lov qilingan kundan boshlab 30 kun amal qiladi.
-        Ism, ID va username Telegram’dan olinadi — hech narsa kiritmaysiz.
+        LEYLI MEDIA Premium kanaliga 1 oyga obuna bo‘ling.
+        Eksklyuziv musiqa, audio materiallar va maxsus kontentlarga ega bo‘ling.
       </p>
-      <p class="balance" id="status-line"></p>
-      <div id="plans" class="plans"></div>
-      <button type="button" class="btn btn-gold" id="buy-btn">Obuna sotib olish</button>
-    </section>
+      <button type="button" class="btn btn-light" id="pay-btn">Payme orqali to‘lash</button>
+    </div>
+  </section>
 
-    <section id="screen-pay" class="screen hidden">
-      <button type="button" class="back" id="back-btn">← Orqaga</button>
-      <h1>To‘lov</h1>
-      <p class="lead">Ma’lumotlar Telegram akkauntingizdan olingan. Payme’da faqat tasdiqlaysiz.</p>
-
-      <div class="card">
-        <div class="row"><span>F.I.Sh.</span><strong id="pay-name">—</strong></div>
-        <div class="row"><span>Foydalanuvchi</span><strong id="pay-user">—</strong></div>
-        <div class="row"><span>Telegram ID</span><strong id="pay-id">—</strong></div>
-        <div class="row"><span>Tarif</span><strong id="pay-plan">—</strong></div>
-        <div class="row total"><span>Summa</span><strong id="pay-amount">—</strong></div>
-      </div>
-
-      <p class="method-label">To‘lov usuli</p>
-      <div class="payme-chip" aria-pressed="true">
-        <span class="payme-logo">payme</span>
-      </div>
-
-      <button type="button" class="btn btn-gold" id="pay-btn">Payme orqali to‘lash</button>
-    </section>
-
-    <section id="screen-active" class="screen hidden">
-      <div class="badge">Faol obuna</div>
-      <h1>Premium kanal ochiq</h1>
+  <section id="screen-active" class="screen screen-card hidden">
+    <div class="price-card">
+      <p class="eyebrow">PREMIUM OBUNA</p>
+      <h2>LEYLI MEDIA</h2>
       <p class="lead" id="active-until"></p>
-      <button type="button" class="btn btn-gold" id="link-btn">📢 Kanalga kirish</button>
-      <button type="button" class="btn btn-ghost" id="extend-btn">Obunani uzaytirish</button>
-    </section>
-  </main>
+      <button type="button" class="btn btn-light" id="link-btn">Kanalga kirish</button>
+      <button type="button" class="btn btn-outline" id="extend-btn">Obunani uzaytirish</button>
+    </div>
+  </section>
 
-  <footer>© 2026 LEYLI MEDIA</footer>
   <script src="app.js"></script>
 </body>
 </html>

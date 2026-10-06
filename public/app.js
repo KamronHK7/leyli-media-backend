@@ -9,21 +9,26 @@
   };
 
   let state = {
-    user: null,
     plans: [],
     subscription: null,
     selectedPlanId: null,
     paymentReady: false
   };
 
+  const preview = new URLSearchParams(location.search).get("preview");
+
   function show(name) {
     Object.entries(screens).forEach(([key, el]) => {
       el.classList.toggle("hidden", key !== name);
     });
-  }
 
-  function formatSom(value) {
-    return new Intl.NumberFormat("uz-UZ").format(value) + " so‘m";
+    if (tg && tg.BackButton) {
+      if (name === "pay") {
+        tg.BackButton.show();
+      } else {
+        tg.BackButton.hide();
+      }
+    }
   }
 
   function formatDate(iso) {
@@ -33,10 +38,6 @@
       month: "2-digit",
       year: "numeric"
     });
-  }
-
-  function fullName(user) {
-    return [user.first_name, user.last_name].filter(Boolean).join(" ") || "Telegram foydalanuvchi";
   }
 
   function selectedPlan() {
@@ -62,86 +63,33 @@
     return body;
   }
 
-  function renderPlans() {
-    const box = document.getElementById("plans");
-    box.innerHTML = "";
-
-    state.plans.forEach((plan) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "plan" + (plan.id === state.selectedPlanId ? " selected" : "");
-      btn.innerHTML =
-        '<span class="plan-title">' + plan.title + "</span>" +
-        '<span class="plan-price">' + formatSom(plan.price) + "</span>";
-      btn.addEventListener("click", () => {
-        state.selectedPlanId = plan.id;
-        renderPlans();
-      });
-      box.appendChild(btn);
-    });
-  }
-
   function renderHome() {
-    const user = state.user;
-    document.getElementById("hello").textContent =
-      "Assalomu alaykum, " + fullName(user) + "!";
-
-    if (state.subscription && state.subscription.active) {
-      document.getElementById("status-line").textContent =
-        "Obunangiz " + formatDate(state.subscription.expires_at) + " gacha faol.";
-    } else {
-      document.getElementById("status-line").textContent =
-        "Hozirda faol obuna yo‘q.";
-    }
-
-    renderPlans();
     show("home");
   }
 
   function renderPay() {
-    const user = state.user;
-    const plan = selectedPlan();
-
-    document.getElementById("pay-name").textContent = fullName(user);
-    document.getElementById("pay-user").textContent = user.username
-      ? "@" + user.username
-      : "—";
-    document.getElementById("pay-id").textContent = user.id;
-    document.getElementById("pay-plan").textContent = plan.title;
-    document.getElementById("pay-amount").textContent = formatSom(plan.price);
-    document.getElementById("pay-btn").disabled = !state.paymentReady;
+    document.getElementById("pay-btn").disabled = !state.paymentReady && !preview;
     show("pay");
   }
 
   function renderActive() {
     document.getElementById("active-until").textContent =
-      "Obuna " + formatDate(state.subscription.expires_at) +
-      " gacha amal qiladi. Kanal havolasi botga yuboriladi.";
+      "Obuna " + formatDate(state.subscription.expires_at) + " gacha faol.";
     show("active");
   }
 
   async function loadMe() {
     const data = await api("/api/me");
-    state.user = data.user;
     state.plans = data.plans;
     state.subscription = data.subscription;
     state.selectedPlanId = (data.plans[0] && data.plans[0].id) || null;
     state.paymentReady = data.payment_ready;
   }
 
-  const preview = new URLSearchParams(location.search).get("preview");
-
   function loadPreview(kind) {
-    state.user = {
-      id: "7279073491",
-      first_name: "Kamron",
-      last_name: "",
-      username: "Kamron_HK7",
-      photo_url: ""
-    };
     state.plans = [{ id: "month_1", title: "1 oylik", days: 30, price: 20000 }];
     state.selectedPlanId = "month_1";
-    state.paymentReady = false;
+    state.paymentReady = true;
     state.subscription =
       kind === "active"
         ? {
@@ -154,13 +102,11 @@
 
   async function checkout() {
     if (preview) {
-      alert("Bu faqat dizayn ko‘rinishi. Haqiqiy to‘lov Telegram mini appda ishlaydi.");
       return;
     }
 
     const btn = document.getElementById("pay-btn");
     btn.disabled = true;
-    btn.textContent = "Havola tayyorlanmoqda...";
 
     try {
       const data = await api("/api/checkout", {
@@ -174,16 +120,14 @@
         window.location.href = data.url;
       }
     } catch (error) {
-      alert("To‘lov havolasini ochib bo‘lmadi. Qayta urinib ko‘ring.");
+      alert("To‘lovni ochib bo‘lmadi. Qayta urinib ko‘ring.");
     } finally {
       btn.disabled = false;
-      btn.textContent = "Payme orqali to‘lash";
     }
   }
 
   async function sendLink() {
     if (preview) {
-      alert("Bu faqat dizayn ko‘rinishi. Kanal havolasi bot orqali yuboriladi.");
       return;
     }
 
@@ -225,18 +169,15 @@
       /* eski Telegram versiyalarida rang sozlamasi bo‘lmasligi mumkin */
     }
 
+    if (tg.BackButton) {
+      tg.BackButton.onClick(renderHome);
+    }
+
     try {
       await loadMe();
     } catch (error) {
       show("error");
       return;
-    }
-
-    const paid = new URLSearchParams(location.search).get("paid") === "1";
-
-    if (paid) {
-      document.getElementById("status-line").textContent =
-        "To‘lov tekshirilmoqda. Bir necha soniyadan so‘ng obuna faollashadi.";
     }
 
     if (state.subscription && state.subscription.active) {
@@ -247,7 +188,6 @@
   }
 
   document.getElementById("buy-btn").addEventListener("click", renderPay);
-  document.getElementById("back-btn").addEventListener("click", renderHome);
   document.getElementById("pay-btn").addEventListener("click", checkout);
   document.getElementById("link-btn").addEventListener("click", sendLink);
   document.getElementById("extend-btn").addEventListener("click", renderPay);
