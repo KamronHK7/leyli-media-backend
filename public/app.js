@@ -129,7 +129,35 @@
     state.paymentReady = data.payment_ready;
   }
 
+  const preview = new URLSearchParams(location.search).get("preview");
+
+  function loadPreview(kind) {
+    state.user = {
+      id: "7279073491",
+      first_name: "Kamron",
+      last_name: "",
+      username: "Kamron_HK7",
+      photo_url: ""
+    };
+    state.plans = [{ id: "month_1", title: "1 oylik", days: 30, price: 20000 }];
+    state.selectedPlanId = "month_1";
+    state.paymentReady = false;
+    state.subscription =
+      kind === "active"
+        ? {
+            active: true,
+            expires_at: "2026-11-06T00:00:00.000Z",
+            plan_id: "month_1"
+          }
+        : { active: false, expires_at: null, plan_id: null };
+  }
+
   async function checkout() {
+    if (preview) {
+      alert("Bu faqat dizayn ko‘rinishi. Haqiqiy to‘lov Telegram mini appda ishlaydi.");
+      return;
+    }
+
     const btn = document.getElementById("pay-btn");
     btn.disabled = true;
     btn.textContent = "Havola tayyorlanmoqda...";
@@ -154,6 +182,11 @@
   }
 
   async function sendLink() {
+    if (preview) {
+      alert("Bu faqat dizayn ko‘rinishi. Kanal havolasi bot orqali yuboriladi.");
+      return;
+    }
+
     const btn = document.getElementById("link-btn");
     btn.disabled = true;
 
@@ -168,6 +201,16 @@
   }
 
   async function boot() {
+    if (preview) {
+      loadPreview(preview);
+      if (state.subscription.active) {
+        renderActive();
+      } else {
+        renderHome();
+      }
+      return;
+    }
+
     if (!tg || !tg.initData) {
       show("error");
       return;
