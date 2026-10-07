@@ -160,7 +160,6 @@ function createPaymeRouter({ pool, config, hooks = {} }) {
       return reject();
     }
 
-    req.paymeSandbox = isSandbox;
     next();
   }
 
@@ -290,7 +289,7 @@ function createPaymeRouter({ pool, config, hooks = {} }) {
         let busy = false;
 
         for (const row of active.rows) {
-          if (isExpired(row) || req.paymeSandbox) {
+          if (isExpired(row)) {
             await cancelExpired(row);
           } else {
             busy = true;
