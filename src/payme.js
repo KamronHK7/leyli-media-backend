@@ -160,6 +160,7 @@ function createPaymeRouter({ pool, config, hooks = {} }) {
       return reject();
     }
 
+    req.paymeSandbox = isSandbox;
     next();
   }
 
@@ -228,7 +229,7 @@ function createPaymeRouter({ pool, config, hooks = {} }) {
   router.post("/", checkAuth, async (req, res) => {
     const { method, params, id } = req.body || {};
 
-    console.log("📥 PAYME:", method);
+    console.log("📥 PAYME:", method, params?.id || params?.account?.user_id || "");
 
     try {
       /* CheckPerformTransaction */
@@ -289,7 +290,7 @@ function createPaymeRouter({ pool, config, hooks = {} }) {
         let busy = false;
 
         for (const row of active.rows) {
-          if (isExpired(row)) {
+          if (isExpired(row) || req.paymeSandbox) {
             await cancelExpired(row);
           } else {
             busy = true;
