@@ -1,5 +1,5 @@
 const { getPlanById, getPlanByAmount, amountTiyin } = require("./config");
-const { getSubscription, isActive, grantSubscription } = require("./subscriptions");
+const { DAY_MS, getSubscription, isActive, grantSubscription } = require("./subscriptions");
 
 function planFromAmountSom(amountSom) {
   if (!amountSom) {
@@ -7,6 +7,46 @@ function planFromAmountSom(amountSom) {
   }
 
   return getPlanByAmount(amountTiyin({ priceSom: Number(amountSom) })) || getPlanById("month_1");
+}
+
+function parsePlanToken(token) {
+  const raw = String(token || "").trim().toLowerCase();
+
+  if (!raw) {
+    return null;
+  }
+
+  const compact = raw.replace(/[^a-z0-9]/g, "");
+
+  if (compact === "6" || compact === "6oy" || compact === "month6") {
+    return getPlanById("month_6");
+  }
+
+  if (compact === "1" || compact === "1oy" || compact === "month1") {
+    return getPlanById("month_1");
+  }
+
+  if (/^\d+$/.test(raw)) {
+    return getPlanByAmount(amountTiyin({ priceSom: Number(raw) }));
+  }
+
+  return getPlanById(raw) || getPlanById(compact);
+}
+
+function parseStaffGrantText(text) {
+  const parts = String(text || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!parts.length || !/^\d{3,20}$/.test(parts[0])) {
+    return null;
+  }
+
+  return {
+    userId: parts[0],
+    plan: parts[1] ? parsePlanToken(parts[1]) : null
+  };
 }
 
 async function findPendingApproval(pool, telegramUserId) {
@@ -33,13 +73,26 @@ async function getApproval(pool, id) {
 }
 
 async function createApproval(pool, { telegramUserId, amountSom, fullName, username, source }) {
+  const plan = planFromAmountSom(amountSom);
   const pending = await findPendingApproval(pool, telegramUserId);
 
   if (pending) {
-    return pending;
-  }
+    if (pending.plan_id === plan.id) {
+      return pending;
+    }
 
-  const plan = planFromAmountSom(amountSom);
+    const updated = await pool.query(
+      `
+        UPDATE payment_approvals
+        SET plan_id = $2, amount_som = $3
+        WHERE id = $1
+        RETURNING *
+      `,
+      [pending.id, plan.id, amountSom ? Number(amountSom) : plan.priceSom]
+    );
+
+    return updated.rows[0];
+  }
 
   const inserted = await pool.query(
     `
@@ -66,6 +119,10 @@ async function applyApproval({ pool, notifier, approval }) {
   const userId = String(approval.telegram_user_id);
   const plan = getPlanById(approval.plan_id) || getPlanById("month_1");
   const current = await getSubscription(pool, userId);
+  const remainingMs = isActive(current)
+    ? new Date(current.expires_at).getTime() - Date.now()
+    : 0;
+  const alreadyCovered = remainingMs >= plan.days * DAY_MS - 60 * 1000;
   let expiresAt;
 
   await pool.query(
@@ -77,7 +134,7 @@ async function applyApproval({ pool, notifier, approval }) {
     [userId, approval.full_name || "mijoz", approval.username || null]
   );
 
-  if (isActive(current)) {
+  if (alreadyCovered) {
     expiresAt = current.expires_at;
     await notifier.sendAccessLink(userId, expiresAt);
   } else {
@@ -94,7 +151,7 @@ async function applyApproval({ pool, notifier, approval }) {
     [approval.id]
   );
 
-  return { expiresAt, granted: !isActive(current) };
+  return { expiresAt, granted: !alreadyCovered };
 }
 
 async function rejectApproval(pool, approval) {
@@ -110,6 +167,8 @@ async function rejectApproval(pool, approval) {
 
 module.exports = {
   planFromAmountSom,
+  parsePlanToken,
+  parseStaffGrantText,
   findPendingApproval,
   getApproval,
   createApproval,

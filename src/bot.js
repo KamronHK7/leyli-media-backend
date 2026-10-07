@@ -1,8 +1,9 @@
 const { Bot, InlineKeyboard, webhookCallback } = require("grammy");
 
+const { PLANS, getPlanById } = require("./config");
 const { upsertUser } = require("./db");
 const { getSubscription, isActive } = require("./subscriptions");
-const { createApproval, applyApproval } = require("./approvals");
+const { createApproval, applyApproval, parseStaffGrantText } = require("./approvals");
 
 const INVITE_LINK_TTL_SEC = 24 * 60 * 60;
 
@@ -93,26 +94,47 @@ function createTelegram({ pool, config }) {
     return staffIds().has(String(userId));
   }
 
-  async function sendInviteForPaidUser(ctx, rawUserId, amountSom) {
-    const userId = String(rawUserId || "").trim();
+  function planChoiceKeyboard(userId) {
+    const keyboard = new InlineKeyboard();
 
-    if (!/^\d{3,20}$/.test(userId)) {
-      await ctx.reply("Payme chekdan faqat <b>ID пользователя</b> ni yuboring.\nMasalan: <code>6336262541</code>", {
-        parse_mode: "HTML"
-      });
+    for (const plan of PLANS) {
+      keyboard
+        .text(`${plan.title} — ${plan.priceSom} so'm`, `grant:${userId}:${plan.id}`)
+        .row();
+    }
+
+    return keyboard;
+  }
+
+  async function askPlanForUser(ctx, userId) {
+    await ctx.reply(
+      `User ID: <code>${escapeHtml(userId)}</code>\nChekdagi summaga qarab tarifni tanlang:`,
+      { parse_mode: "HTML", reply_markup: planChoiceKeyboard(userId) }
+    );
+  }
+
+  async function sendInviteForPaidUser(ctx, rawUserId, plan) {
+    const userId = String(rawUserId || "").trim();
+    const selected = plan || getPlanById("month_1");
+
+    if (!/^\d{3,20}$/.test(userId) || !selected) {
+      await ctx.reply(
+        "Payme chekdan <b>ID пользователя</b> ni yuboring.\nMasalan: <code>6336262541</code>",
+        { parse_mode: "HTML" }
+      );
       return;
     }
 
     const approval = await createApproval(pool, {
       telegramUserId: userId,
-      amountSom: amountSom || 20000,
+      amountSom: selected.priceSom,
       source: "owner"
     });
 
     try {
-      await applyApproval({ pool, notifier, approval });
+      const result = await applyApproval({ pool, notifier, approval });
       await ctx.reply(
-        `✅ Havola yuborildi.\nUser ID: <code>${escapeHtml(userId)}</code>`,
+        `✅ Havola yuborildi.\nUser ID: <code>${escapeHtml(userId)}</code>\nObuna: <b>${escapeHtml(selected.title)}</b> — ${formatDate(result.expiresAt)} gacha.`,
         { parse_mode: "HTML" }
       );
     } catch (error) {
@@ -258,7 +280,7 @@ function createTelegram({ pool, config }) {
       : "";
 
     const ownerHint = isStaff(ctx.from.id)
-      ? "\n\nTo‘lovchi <b>User ID</b> ni shu yerga yuboring — bot kanal havolasini yuboradi."
+      ? "\n\nTo‘lovchi <b>User ID</b> ni yuboring, keyin 1 oylik yoki 6 oylikni tanlang."
       : "";
 
     await ctx.reply(
@@ -274,9 +296,41 @@ function createTelegram({ pool, config }) {
       return;
     }
 
-    const parts = String(ctx.match || "").trim().split(/\s+/);
-    const amountSom = parts[1] && /^\d+$/.test(parts[1]) ? Number(parts[1]) : 20000;
-    await sendInviteForPaidUser(ctx, parts[0], amountSom);
+    const grant = parseStaffGrantText(String(ctx.match || "").trim());
+
+    if (!grant) {
+      await ctx.reply(
+        "Payme chekdan <b>ID пользователя</b> ni yuboring.\nMasalan: <code>6336262541</code>",
+        { parse_mode: "HTML" }
+      );
+      return;
+    }
+
+    if (!grant.plan) {
+      await askPlanForUser(ctx, grant.userId);
+      return;
+    }
+
+    await sendInviteForPaidUser(ctx, grant.userId, grant.plan);
+  });
+
+  bot.callbackQuery(/^grant:(\d{3,20}):(month_1|month_6)$/, async (ctx) => {
+    if (!isStaff(ctx.from.id)) {
+      await ctx.answerCallbackQuery();
+      return;
+    }
+
+    const userId = ctx.match[1];
+    const plan = getPlanById(ctx.match[2]);
+
+    await ctx.answerCallbackQuery({ text: plan ? plan.title : "" });
+    await sendInviteForPaidUser(ctx, userId, plan);
+
+    try {
+      await ctx.editMessageReplyMarkup({ reply_markup: { inline_keyboard: [] } });
+    } catch (error) {
+      /* xabar allaqachon o'zgargan bo'lishi mumkin */
+    }
   });
 
   bot.callbackQuery("check", async (ctx) => {
@@ -324,8 +378,15 @@ function createTelegram({ pool, config }) {
       return;
     }
 
-    if (isStaff(ctx.from.id) && /^\d{3,20}$/.test(text)) {
-      await sendInviteForPaidUser(ctx, text, 20000);
+    const grant = isStaff(ctx.from.id) ? parseStaffGrantText(text) : null;
+
+    if (grant) {
+      if (!grant.plan) {
+        await askPlanForUser(ctx, grant.userId);
+        return;
+      }
+
+      await sendInviteForPaidUser(ctx, grant.userId, grant.plan);
       return;
     }
 
@@ -361,7 +422,7 @@ function createTelegram({ pool, config }) {
       await api.setMyCommands(
         [
           { command: "start", description: "Boshlash" },
-          { command: "paid", description: "To‘lovchi User ID" }
+          { command: "paid", description: "User ID va tarif" }
         ],
         { scope: { type: "chat", chat_id: Number(config.ownerTelegramId) } }
       );

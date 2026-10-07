@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node --test test/payme.test.js test/api.test.js test/jobs.test.js"
+    "test": "node --test test/payme.test.js test/api.test.js test/jobs.test.js test/approvals.test.js"
   },
   "dependencies": {
     "dotenv": "^16.6.1",
