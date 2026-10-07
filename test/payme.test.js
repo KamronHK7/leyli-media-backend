@@ -19,9 +19,20 @@ test("Payme Merchant API sandbox ssenariylari", async (t) => {
 
   r = await rpc(env.url, "CheckPerformTransaction", { amount, account: {} }, AUTH);
   assert.equal(r.body.error.code, -31050);
+  assert.equal(r.body.error.data, "user_id");
+
+  r = await rpc(
+    env.url,
+    "CheckPerformTransaction",
+    { amount: 23232222, account: { user_id: "2323uaccuk3223" } },
+    AUTH
+  );
+  assert.equal(r.body.error.code, -31050);
+  assert.equal(r.body.error.data, "user_id");
 
   r = await rpc(env.url, "CheckPerformTransaction", { amount: 50000, account }, AUTH);
   assert.equal(r.body.error.code, -31001);
+  assert.equal(r.body.error.data, "amount");
 
   r = await rpc(env.url, "CheckPerformTransaction", { amount, account }, AUTH);
   assert.equal(r.body.result.allow, true);

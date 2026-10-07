@@ -171,20 +171,21 @@ function createPaymeRouter({ pool, config, hooks = {} }) {
 
   /*
     Summa va account tekshiruvi.
-    Xato bo'lsa { error: [code, message, data] }, aks holda { telegramUserId, amount, plan }.
+    Payme pesochitsa avval hisobni tekshiradi: mavjud bo'lmagan user_id
+    uchun -31050...-31099, keyin noto'g'ri summa uchun -31001.
   */
   async function validateAmountAndAccount(params) {
+    const telegramUserId = getTelegramUserId(params?.account);
+
+    if (!telegramUserId || !(await telegramUserExists(telegramUserId))) {
+      return { error: [-31050, MESSAGES.userNotFound, "user_id"] };
+    }
+
     const amount = Number(params?.amount);
     const plan = Number.isFinite(amount) ? getPlanByAmount(amount) : null;
 
     if (!plan) {
       return { error: [-31001, MESSAGES.invalidAmount, "amount"] };
-    }
-
-    const telegramUserId = getTelegramUserId(params?.account);
-
-    if (!telegramUserId || !(await telegramUserExists(telegramUserId))) {
-      return { error: [-31050, MESSAGES.userNotFound, "account"] };
     }
 
     return { telegramUserId, amount, plan };
