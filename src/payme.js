@@ -122,7 +122,13 @@ function createPaymeRouter({ pool, config, hooks = {} }) {
     const reject = () =>
       rpcError(res, req.body?.id, -32504, MESSAGES.unauthorized);
 
-    if (!config.paymeLogin || !config.paymeKey) {
+    const isSandbox =
+      String(req.headers["test-operation"] || "").toLowerCase() === "paycom";
+    const expectedKey = isSandbox
+      ? config.paymeTestKey || config.paymeKey
+      : config.paymeKey;
+
+    if (!config.paymeLogin || !expectedKey) {
       console.error("❌ PAYME_LOGIN yoki PAYME_KEY o'rnatilmagan");
       return reject();
     }
@@ -150,10 +156,7 @@ function createPaymeRouter({ pool, config, hooks = {} }) {
     const login = decoded.substring(0, separator);
     const password = decoded.substring(separator + 1);
 
-    if (
-      !safeEqual(login, config.paymeLogin) ||
-      !safeEqual(password, config.paymeKey)
-    ) {
+    if (!safeEqual(login, config.paymeLogin) || !safeEqual(password, expectedKey)) {
       return reject();
     }
 

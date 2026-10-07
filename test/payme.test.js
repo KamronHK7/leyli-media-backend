@@ -37,6 +37,30 @@ test("Payme Merchant API sandbox ssenariylari", async (t) => {
   r = await rpc(env.url, "CheckPerformTransaction", { amount, account }, AUTH);
   assert.equal(r.body.result.allow, true);
 
+  const sandbox = await createTestEnv({
+    PAYME_KEY: "prod_key_value",
+    PAYME_TEST_KEY: "sandbox_key_value",
+    PAYME_TEST_USER_ID: "12345"
+  });
+  t.after(() => sandbox.server.close());
+
+  r = await rpc(
+    sandbox.url,
+    "CheckPerformTransaction",
+    { amount: 23232222, account: { user_id: "999999999" } },
+    paymeAuth("Paycom", "sandbox_key_value"),
+    { "Test-Operation": "Paycom" }
+  );
+  assert.equal(r.body.error.code, -31050);
+
+  r = await rpc(
+    sandbox.url,
+    "CheckPerformTransaction",
+    { amount: 23232222, account: { user_id: "999999999" } },
+    paymeAuth("Paycom", "sandbox_key_value")
+  );
+  assert.equal(r.body.error.code, -32504);
+
   r = await rpc(env.url, "CreateTransaction", { id: "tx1", time: now, amount, account }, AUTH);
   assert.equal(r.body.result.state, 1);
 

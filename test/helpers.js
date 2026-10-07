@@ -81,12 +81,13 @@ function paymeAuth(login, key) {
   return "Basic " + Buffer.from(`${login}:${key}`).toString("base64");
 }
 
-async function rpc(url, method, params, auth) {
+async function rpc(url, method, params, auth, extraHeaders = {}) {
   const res = await fetch(`${url}/payme`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: auth
+      Authorization: auth,
+      ...extraHeaders
     },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })
   });

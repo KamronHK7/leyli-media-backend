@@ -77,6 +77,7 @@ function loadConfig(env = process.env) {
 
     paymeLogin: env.PAYME_LOGIN || "",
     paymeKey: env.PAYME_KEY || "",
+    paymeTestKey: env.PAYME_TEST_KEY || "",
     paymeMerchantId: env.PAYME_MERCHANT_ID || "",
     paymeTestMode: env.PAYME_TEST_MODE === "true",
     paymeTestUserId: env.PAYME_TEST_USER_ID || "",
