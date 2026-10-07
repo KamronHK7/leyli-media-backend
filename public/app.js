@@ -290,9 +290,7 @@
   }
 
   function openPayme(url) {
-    // checkout.paycom.uz ni ochmaslik: Payme ilovasi havolani yutib,
-    // to'lov o'rniga bosh sahifa + "request cancelled" chiqadi.
-    // /pay o'z domenimiz — tashqi brauzerda POST qilinadi.
+    // checkout.paycom.uz GET — iOS Universal Link Payme ilovasini ochadi.
     if (tg && typeof tg.openLink === "function") {
       try {
         tg.openLink(url, { try_instant_view: false });

@@ -4,7 +4,7 @@ const { validateInitData } = require("./telegramAuth");
 const { upsertUser } = require("./db");
 const { PLANS, publicPlan, getPlanById } = require("./config");
 const { getSubscription, isActive } = require("./subscriptions");
-const { buildCheckoutUrl } = require("./paymeCheckout");
+const { buildCheckoutGetUrl } = require("./paymeCheckout");
 
 const LINK_COOLDOWN_MS = 20 * 1000;
 
@@ -58,7 +58,7 @@ function createApiRouter({ pool, config, notifier }) {
 
       if (config.paymeMerchantId) {
         for (const plan of PLANS) {
-          checkoutUrls[plan.id] = buildCheckoutUrl({
+          checkoutUrls[plan.id] = buildCheckoutGetUrl({
             config,
             userId,
             plan
@@ -108,7 +108,7 @@ function createApiRouter({ pool, config, notifier }) {
 
       res.json({
         ok: true,
-        url: buildCheckoutUrl({
+        url: buildCheckoutGetUrl({
           config,
           userId: String(req.tgUser.id),
           plan
@@ -145,4 +145,4 @@ function createApiRouter({ pool, config, notifier }) {
   return router;
 }
 
-module.exports = { createApiRouter, buildCheckoutUrl };
+module.exports = { createApiRouter };
