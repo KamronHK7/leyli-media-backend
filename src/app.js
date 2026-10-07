@@ -30,7 +30,15 @@ function createApp({ pool, config, notifier, webhookHandler }) {
     }
   });
 
-  /* Payme Merchant API */
+  /* Payme Merchant API — faqat POST JSON-RPC. GET brauzerda ochilsa ham 404 bo'lmasin. */
+  app.get("/payme", (req, res) => {
+    res.json({
+      ok: true,
+      service: "payme",
+      method: "POST"
+    });
+  });
+
   app.use(
     "/payme",
     createPaymeRouter({

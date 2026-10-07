@@ -61,6 +61,12 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
   body = await res.json();
   assert.match(body.url, /[?&]a=10900000(?:&|$)/);
 
+  res = await fetch(`${env.url}/payme`);
+  assert.equal(res.status, 200);
+  body = await res.json();
+  assert.equal(body.ok, true);
+  assert.equal(body.service, "payme");
+
   res = await fetch(`${env.url}/pay`);
   assert.equal(res.status, 400);
 
