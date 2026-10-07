@@ -320,6 +320,12 @@
       return;
     }
 
+    const readyUrl = state.checkoutUrls[plan.id];
+    if (readyUrl) {
+      openPayme(readyUrl);
+      return;
+    }
+
     const buttons = [
       document.getElementById("pay-next"),
       document.getElementById("payme-btn"),
@@ -335,13 +341,12 @@
         body: JSON.stringify({ plan_id: plan.id })
       });
 
-      const url = data.url || state.checkoutUrls[plan.id];
-      if (!url) {
+      if (!data.url) {
         throw new Error("no_checkout_url");
       }
 
-      state.checkoutUrls[plan.id] = url;
-      openPayme(url);
+      state.checkoutUrls[plan.id] = data.url;
+      openPayme(data.url);
     } catch (error) {
       const reason = error && error.message ? String(error.message) : "";
       if (reason === "payment_not_configured") {
@@ -366,13 +371,13 @@
     if (isActive()) {
       status.textContent = "To‘lov qabul qilindi";
       hint.textContent =
-        "Kanal havolasi botga yuboriladi. Tugma bilan ham so‘rashingiz mumkin.";
+        "Bir martalik kanal havolasi botga yuboriladi. Tugma bilan ham so‘rashingiz mumkin.";
       linkBtn.disabled = false;
     } else {
-      status.textContent = "To‘lovni tasdiqlang";
+      status.textContent = "To‘lov tekshirilmoqda";
       hint.textContent =
-        "Payme’da to‘lagach shu tugmani bosing — bot kanal havolasini yuboradi.";
-      linkBtn.disabled = false;
+        "Payme tasdiqlagach obuna avtomatik beriladi va bot kanal havolasini yuboradi. Birozdan so‘ng yangilang.";
+      linkBtn.disabled = true;
     }
   }
 
@@ -385,47 +390,20 @@
     });
   }
 
-  async function claimPaid() {
-    try {
-      const data = await api("/api/claim-paid", { method: "POST", body: "{}" });
-      if (data.subscription) {
-        state.subscription = data.subscription;
-      }
-      return data;
-    } catch (error) {
-      return null;
-    }
-  }
-
   async function sendLink() {
-    if (preview) {
+    if (preview || !isActive()) {
       return;
     }
 
     setLinkButtonsDisabled(true);
 
     try {
-      if (!isActive()) {
-        await claimPaid();
-      }
-
-      if (!isActive()) {
-        await loadMe();
-      }
-
-      if (!isActive()) {
-        openModal("To‘lov hali tasdiqlanmadi. Payme’da to‘lagach qayta bosing.");
-        return;
-      }
-
       await api("/api/send-link", { method: "POST", body: "{}" });
       if (tg) tg.close();
     } catch (error) {
       openModal("Havolani yuborib bo‘lmadi.");
     } finally {
-      setLinkButtonsDisabled(false);
-      renderPanel();
-      renderDone();
+      setLinkButtonsDisabled(!isActive());
     }
   }
 
@@ -491,14 +469,13 @@
       params.get("paid") === "1" || location.pathname.replace(/\/+$/, "") === "/paid";
 
     if (paidReturn) {
-      await claimPaid();
       showPage("done");
 
       if (isActive()) {
         try {
           await api("/api/send-link", { method: "POST", body: "{}" });
         } catch (error) {
-          /* bot /start yoki Perform paytida ham yuborgan bo‘lishi mumkin */
+          /* bot PerformTransaction paytida ham yuborgan bo‘lishi mumkin */
         }
       }
 
@@ -534,6 +511,16 @@
   });
   document.getElementById("done-back").addEventListener("click", () => showPage("plans"));
   document.getElementById("done-link").addEventListener("click", async () => {
+    if (!preview && !isActive()) {
+      try {
+        await loadMe();
+        renderDone();
+      } catch (error) {
+        openModal("Holatni yangilab bo‘lmadi.");
+        return;
+      }
+    }
+
     await sendLink();
   });
   document.getElementById("about-buy").addEventListener("click", () => showPage("plans"));
@@ -555,7 +542,6 @@
     }
 
     try {
-      await claimPaid();
       await loadMe();
       renderPanel();
     } catch (error) {

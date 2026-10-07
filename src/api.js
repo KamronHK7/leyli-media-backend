@@ -4,7 +4,6 @@ const { validateInitData } = require("./telegramAuth");
 const { upsertUser } = require("./db");
 const { PLANS, publicPlan, getPlanById } = require("./config");
 const { getSubscription, isActive } = require("./subscriptions");
-const { savePendingPayment, claimPendingPayment } = require("./pending");
 const { buildCheckoutUrl, payerDisplayName, payerUsername } = require("./paymeCheckout");
 
 const LINK_COOLDOWN_MS = 20 * 1000;
@@ -116,7 +115,6 @@ function createApiRouter({ pool, config, notifier }) {
       }
 
       await upsertUser(pool, req.tgUser);
-      await savePendingPayment(pool, req.tgUser.id, plan.id);
 
       res.json({
         ok: true,
@@ -127,28 +125,6 @@ function createApiRouter({ pool, config, notifier }) {
           fullName,
           username
         })
-      });
-    })
-  );
-
-  /*
-    Payme Web-kassa Merchant API chaqirmasa ham, to'lovdan qaytgan
-    foydalanuvchiga obuna ochiladi va bot havola yuboradi.
-  */
-  router.post(
-    "/claim-paid",
-    handle(async (req, res) => {
-      const result = await claimPendingPayment({
-        pool,
-        notifier,
-        telegramUserId: req.tgUser.id
-      });
-
-      const subscription = await getSubscription(pool, req.tgUser.id);
-
-      res.status(result.ok ? 200 : 409).json({
-        ...result,
-        subscription: subscriptionView(subscription)
       });
     })
   );
