@@ -88,7 +88,14 @@ function createApiRouter({ pool, config, notifier }) {
         },
         plans: PLANS.map(publicPlan),
         subscription: subscriptionView(subscription),
-        payment_ready: Boolean(config.paymeMerchantId)
+        payment_ready: Boolean(config.paymeMerchantId),
+        support_url: config.supportUrl || "",
+        brand: {
+          name: "LEYLI MEDIA",
+          bot_username: config.botUsername || "LeyliMedia_bot",
+          instagram_url: config.instagramUrl || "",
+          youtube_url: config.youtubeUrl || ""
+        }
       });
     })
   );

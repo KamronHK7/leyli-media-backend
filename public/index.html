@@ -8,51 +8,101 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header>
-    <div class="logo">LEYLI MEDIA</div>
-  </header>
-
-  <section id="screen-loading" class="screen screen-center">
+  <section id="screen-loading" class="page">
     <div class="spinner"></div>
   </section>
 
-  <section id="screen-error" class="screen screen-center hidden">
-    <h1>LEYLI MEDIA</h1>
-    <p class="lead">Mini ilovani @LeyliMedia_bot orqali oching.</p>
+  <section id="screen-error" class="page hidden">
+    <p class="top-brand">LEYLI MEDIA</p>
+    <h1>Premium bot</h1>
+    <p class="hint">Mini ilovani bot orqali oching.</p>
   </section>
 
-  <section id="screen-home" class="screen screen-hero hidden">
-    <p class="eyebrow">LEYLI MEDIA</p>
-    <h1>LEYLI<br>MEDIA</h1>
-    <p class="lead">
-      Eksklyuziv musiqa, yangi ijodiy loyihalar, audio materiallar
-      va maxsus kontent — barchasi bitta Premium Telegram kanalda.
-    </p>
-    <button type="button" class="btn btn-outline" id="buy-btn">Premium obuna</button>
-  </section>
-
-  <section id="screen-pay" class="screen screen-card hidden">
-    <div class="price-card">
-      <p class="eyebrow">PREMIUM OBUNA</p>
-      <h2>LEYLI MEDIA</h2>
-      <p class="price">20 000 so‘m / 1 oy</p>
-      <p class="lead">
-        LEYLI MEDIA Premium kanaliga 1 oyga obuna bo‘ling.
-        Eksklyuziv musiqa, audio materiallar va maxsus kontentlarga ega bo‘ling.
+  <section id="page-about" class="page hidden">
+    <p class="top-brand">LEYLI MEDIA</p>
+    <div class="landing">
+      <p class="kicker">PREMIUM KANAL</p>
+      <h1 class="wordmark">LEYLI<br>MEDIA</h1>
+      <p class="hint landing-copy">
+        Eksklyuziv musiqa, yangi ijodiy loyihalar, audio materiallar va maxsus kontent.
       </p>
-      <button type="button" class="btn btn-light" id="pay-btn">Payme orqali to‘lash</button>
+      <div class="price-cards" id="landing-prices"></div>
+      <button type="button" class="btn btn-gold" id="about-buy">Premium obuna</button>
     </div>
   </section>
 
-  <section id="screen-active" class="screen screen-card hidden">
-    <div class="price-card">
-      <p class="eyebrow">PREMIUM OBUNA</p>
-      <h2>LEYLI MEDIA</h2>
-      <p class="lead" id="active-until"></p>
-      <button type="button" class="btn btn-light" id="link-btn">Kanalga kirish</button>
-      <button type="button" class="btn btn-outline" id="extend-btn">Obunani uzaytirish</button>
+  <section id="page-plans" class="page page-plans hidden">
+    <h1>Obunalar to‘plami</h1>
+    <p class="hint">Tanlangan obuna to‘lov qilingan sanadan boshlab belgilangan muddatgacha amal qiladi!</p>
+    <div id="plans" class="plans"></div>
+    <button type="button" class="detail" id="detail-btn">Obuna haqida batafsil</button>
+    <div class="buy-dock">
+      <button type="button" class="btn btn-buy" id="buy-btn">Obuna sotib olish</button>
     </div>
   </section>
+
+  <section id="page-pay" class="page page-pay hidden">
+    <h1>To‘lovlar</h1>
+    <div class="logo-card">
+      <img src="logo.png" alt="LEYLI MEDIA">
+    </div>
+    <p class="field-label">To‘lov miqdori</p>
+    <div class="amount-box" id="amount-view"></div>
+    <div class="chips" id="amount-chips"></div>
+    <p class="info">
+      <span class="info-ico">i</span>
+      Davom etish tugmasini bosgach Payme ochiladi. F.I.Sh, telefon va summani qayta kiritishingiz shart emas — to‘lov summasi oldindan kiritilgan bo‘ladi.
+    </p>
+    <p class="field-label field-label-center">Payme orqali to‘lov qilish</p>
+    <div class="methods">
+      <button type="button" class="method selected" aria-label="Payme">
+        <img src="payme.png" alt="Payme" class="method-payme">
+      </button>
+    </div>
+    <div class="buy-dock dock-split">
+      <button type="button" class="btn btn-ghost" id="pay-back">Orqaga</button>
+      <button type="button" class="btn btn-buy" id="pay-next">Davom etish</button>
+    </div>
+  </section>
+
+  <section id="page-done" class="page hidden">
+    <h1>To‘lov</h1>
+    <p class="status" id="done-status">Tekshirilmoqda…</p>
+    <p class="hint" id="done-hint">Payme to‘lovi tasdiqlansa, kanal havolasi botga yuboriladi.</p>
+    <button type="button" class="btn btn-gold" id="done-link">Kanal havolasini olish</button>
+    <button type="button" class="btn btn-ghost" id="done-back">Bosh sahifa</button>
+  </section>
+
+  <section id="page-panel" class="page hidden">
+    <p class="top-brand">LEYLI MEDIA</p>
+    <p class="id-row"><span id="panel-id"></span>
+      <button type="button" class="icon-btn" id="refresh-btn" aria-label="Yangilash">↻</button>
+    </p>
+    <p class="hint">Obuna holati</p>
+    <p class="status" id="panel-status"></p>
+    <button type="button" class="btn btn-gold" id="link-btn">Yopiq kanalga qo‘shilish</button>
+    <button type="button" class="btn btn-ghost" id="panel-buy-btn">Obuna ulash</button>
+    <div class="menu">
+      <button type="button" class="menu-row" id="menu-pay"><span>To‘lovlar</span><span class="chevron">›</span></button>
+      <button type="button" class="menu-row" id="menu-subs"><span>Obunalarim</span><span class="chevron">›</span></button>
+    </div>
+    <div class="menu hidden" id="menu-links">
+      <a class="menu-row hidden" id="menu-help" href="#" target="_blank" rel="noreferrer"><span>Yordam</span><span class="chevron">›</span></a>
+      <a class="menu-row hidden" id="menu-ig" href="#" target="_blank" rel="noreferrer"><span>instagram</span><span class="chevron">›</span></a>
+      <a class="menu-row hidden" id="menu-yt" href="#" target="_blank" rel="noreferrer"><span>Youtube</span><span class="chevron">›</span></a>
+    </div>
+  </section>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <p class="modal-title" id="modal-title">LEYLI MEDIA</p>
+        <button type="button" class="icon-btn" id="modal-x" aria-label="Yopish">×</button>
+      </div>
+      <p id="modal-text"></p>
+      <button type="button" class="modal-ok" id="modal-close">OK</button>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

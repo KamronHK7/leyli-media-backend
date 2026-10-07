@@ -1,34 +1,44 @@
 (() => {
   const tg = window.Telegram && window.Telegram.WebApp;
+  const params = new URLSearchParams(location.search);
+  const preview = params.get("preview");
+  const startPage = params.get("page") || "plans";
+
   const screens = {
     loading: document.getElementById("screen-loading"),
     error: document.getElementById("screen-error"),
-    home: document.getElementById("screen-home"),
-    pay: document.getElementById("screen-pay"),
-    active: document.getElementById("screen-active")
+    plans: document.getElementById("page-plans"),
+    pay: document.getElementById("page-pay"),
+    done: document.getElementById("page-done"),
+    panel: document.getElementById("page-panel"),
+    about: document.getElementById("page-about")
   };
 
+  const DETAIL_TEXT =
+    "Obuna sotib olganingizda, agar sizda avvaldan obuna mavjud bo‘lsa, yangisi eski obunangizga qo‘shib ketiladi. Obuna muddati siz qaysi sanada xarid qilgan bo‘lsangiz, o‘sha kundan boshlab keyingi oy shu sanagacha amal qiladi.";
+
   let state = {
+    user: null,
     plans: [],
     subscription: null,
     selectedPlanId: null,
-    paymentReady: false
+    supportUrl: "",
+    brand: {
+      name: "LEYLI MEDIA",
+      bot_username: "LeyliMedia_bot",
+      instagram_url: "",
+      youtube_url: ""
+    }
   };
-
-  const preview = new URLSearchParams(location.search).get("preview");
 
   function show(name) {
     Object.entries(screens).forEach(([key, el]) => {
       el.classList.toggle("hidden", key !== name);
     });
+  }
 
-    if (tg && tg.BackButton) {
-      if (name === "pay") {
-        tg.BackButton.show();
-      } else {
-        tg.BackButton.hide();
-      }
-    }
+  function formatSom(value) {
+    return new Intl.NumberFormat("fr-FR").format(value) + " so‘m";
   }
 
   function formatDate(iso) {
@@ -41,7 +51,11 @@
   }
 
   function selectedPlan() {
-    return state.plans.find((plan) => plan.id === state.selectedPlanId) || state.plans[0];
+    return state.plans.find((plan) => plan.id === state.selectedPlanId) || null;
+  }
+
+  function isActive() {
+    return Boolean(state.subscription && state.subscription.active);
   }
 
   async function api(path, options = {}) {
@@ -63,55 +77,190 @@
     return body;
   }
 
-  function renderHome() {
-    show("home");
+  function applyBrand() {
+    const help = document.getElementById("menu-help");
+    if (state.supportUrl) {
+      help.href = state.supportUrl;
+      help.classList.remove("hidden");
+    }
+
+    const ig = document.getElementById("menu-ig");
+    if (state.brand.instagram_url) {
+      ig.href = state.brand.instagram_url;
+      ig.classList.remove("hidden");
+    }
+
+    const yt = document.getElementById("menu-yt");
+    if (state.brand.youtube_url) {
+      yt.href = state.brand.youtube_url;
+      yt.classList.remove("hidden");
+    }
+
+    const extra = document.getElementById("menu-links");
+    extra.classList.toggle(
+      "hidden",
+      !Boolean(state.supportUrl || state.brand.instagram_url || state.brand.youtube_url)
+    );
+  }
+
+  function renderLanding() {
+    const box = document.getElementById("landing-prices");
+    box.innerHTML = "";
+    state.plans.forEach((plan) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "price-card";
+      btn.innerHTML =
+        "<strong>" + formatSom(plan.price) + "</strong><span>" +
+        (plan.old_price ? plan.days / 30 + " oy • " + formatSom(plan.old_price) + " dan" : plan.days / 30 + " oy") +
+        "</span>";
+      btn.addEventListener("click", () => {
+        haptic("select");
+        state.selectedPlanId = plan.id;
+        showPage("plans");
+      });
+      box.appendChild(btn);
+    });
+  }
+
+  function renderPlans() {
+    const box = document.getElementById("plans");
+    box.innerHTML = "";
+
+    state.plans.forEach((plan) => {
+      const selected = plan.id === state.selectedPlanId;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "plan" + (selected ? " selected" : "");
+      btn.innerHTML =
+        '<span class="plan-left"><span class="dot">' + (selected ? "✓" : "") + "</span>" +
+        plan.title +
+        '</span><span class="plan-price">' +
+        (plan.old_price ? '<span class="old">' + formatSom(plan.old_price) + "</span>" : "") +
+        formatSom(plan.price) +
+        "</span>";
+      btn.addEventListener("click", () => {
+        haptic("select");
+        state.selectedPlanId = plan.id;
+        renderPlans();
+      });
+      box.appendChild(btn);
+    });
+
+    document.getElementById("buy-btn").disabled = !state.selectedPlanId;
   }
 
   function renderPay() {
-    document.getElementById("pay-btn").disabled = !state.paymentReady && !preview;
-    show("pay");
-  }
-
-  function renderActive() {
-    document.getElementById("active-until").textContent =
-      "Obuna " + formatDate(state.subscription.expires_at) + " gacha faol.";
-    show("active");
-  }
-
-  async function loadMe() {
-    const data = await api("/api/me");
-    state.plans = data.plans;
-    state.subscription = data.subscription;
-    state.selectedPlanId = (data.plans[0] && data.plans[0].id) || null;
-    state.paymentReady = data.payment_ready;
-  }
-
-  function loadPreview(kind) {
-    state.plans = [{ id: "month_1", title: "1 oylik", days: 30, price: 20000 }];
-    state.selectedPlanId = "month_1";
-    state.paymentReady = true;
-    state.subscription =
-      kind === "active"
-        ? {
-            active: true,
-            expires_at: "2026-11-06T00:00:00.000Z",
-            plan_id: "month_1"
-          }
-        : { active: false, expires_at: null, plan_id: null };
-  }
-
-  async function checkout() {
-    if (preview) {
+    const plan = selectedPlan() || state.plans[0];
+    if (!plan) {
       return;
     }
 
-    const btn = document.getElementById("pay-btn");
-    btn.disabled = true;
+    if (!state.selectedPlanId) {
+      state.selectedPlanId = plan.id;
+    }
+
+    document.getElementById("amount-view").textContent = formatSom(plan.price);
+
+    const chips = document.getElementById("amount-chips");
+    chips.innerHTML = "";
+    state.plans.forEach((item) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip" + (item.id === state.selectedPlanId ? " selected" : "");
+      chip.textContent = formatSom(item.price);
+      chip.addEventListener("click", () => {
+        haptic("select");
+        state.selectedPlanId = item.id;
+        renderPay();
+      });
+      chips.appendChild(chip);
+    });
+  }
+
+  function renderPanel() {
+    document.getElementById("panel-id").textContent = state.user ? "ID: " + state.user.id : "";
+    document.getElementById("panel-status").textContent = isActive()
+      ? formatDate(state.subscription.expires_at) + " gacha"
+      : "Faol emas";
+    document.getElementById("link-btn").disabled = !isActive();
+  }
+
+  function hideNativeButton() {
+    if (tg && tg.MainButton) {
+      tg.MainButton.hide();
+    }
+  }
+
+  function haptic(kind) {
+    try {
+      if (!tg || !tg.HapticFeedback) {
+        return;
+      }
+
+      if (kind === "select") {
+        tg.HapticFeedback.selectionChanged();
+        return;
+      }
+
+      tg.HapticFeedback.impactOccurred(kind || "light");
+    } catch (error) {
+      /* haptic yo‘q qurilmalarda o‘tkazib yuboriladi */
+    }
+  }
+
+  function showPage(name) {
+    if (name === "panel") {
+      renderPanel();
+    } else if (name === "pay") {
+      renderPay();
+    } else if (name === "plans") {
+      renderPlans();
+    } else if (name === "about") {
+      renderLanding();
+    } else if (name === "done") {
+      renderDone();
+    }
+
+    show(name);
+    hideNativeButton();
+  }
+
+  function openModal(text) {
+    document.getElementById("modal-text").textContent = text;
+    document.getElementById("modal").classList.remove("hidden");
+  }
+
+  function closeModal() {
+    document.getElementById("modal").classList.add("hidden");
+  }
+
+  async function checkout() {
+    const plan = selectedPlan();
+    if (!plan) {
+      return;
+    }
+
+    if (preview) {
+      openModal(
+        "Tanlangan summa: " +
+          formatSom(plan.price) +
+          ". Bot orqali ochilganda shu summa bilan Payme ochiladi."
+      );
+      return;
+    }
+
+    const buttons = [document.getElementById("pay-next"), document.getElementById("buy-btn")].filter(
+      Boolean
+    );
+    buttons.forEach((btn) => {
+      btn.disabled = true;
+    });
 
     try {
       const data = await api("/api/checkout", {
         method: "POST",
-        body: JSON.stringify({ plan_id: selectedPlan().id })
+        body: JSON.stringify({ plan_id: plan.id })
       });
 
       if (tg && tg.openLink) {
@@ -120,38 +269,127 @@
         window.location.href = data.url;
       }
     } catch (error) {
-      alert("To‘lovni ochib bo‘lmadi. Qayta urinib ko‘ring.");
+      openModal("To‘lovni ochib bo‘lmadi. Qayta urinib ko‘ring.");
     } finally {
-      btn.disabled = false;
+      buttons.forEach((btn) => {
+        btn.disabled = false;
+      });
     }
   }
 
+  function renderDone() {
+    const status = document.getElementById("done-status");
+    const hint = document.getElementById("done-hint");
+    const linkBtn = document.getElementById("done-link");
+
+    if (isActive()) {
+      status.textContent = "To‘lov qabul qilindi";
+      hint.textContent =
+        "Bir martalik kanal havolasi botga yuboriladi. Tugma bilan ham so‘rashingiz mumkin.";
+      linkBtn.disabled = false;
+    } else {
+      status.textContent = "To‘lov tekshirilmoqda";
+      hint.textContent =
+        "Payme tasdiqlagach obuna avtomatik beriladi va bot kanal havolasini yuboradi. Birozdan so‘ng yangilang.";
+      linkBtn.disabled = true;
+    }
+  }
+
+  function setLinkButtonsDisabled(disabled) {
+    const buttons = [document.getElementById("link-btn"), document.getElementById("done-link")];
+    buttons.forEach((btn) => {
+      if (btn) {
+        btn.disabled = disabled;
+      }
+    });
+  }
+
   async function sendLink() {
-    if (preview) {
+    if (preview || !isActive()) {
       return;
     }
 
-    const btn = document.getElementById("link-btn");
-    btn.disabled = true;
+    setLinkButtonsDisabled(true);
 
     try {
       await api("/api/send-link", { method: "POST", body: "{}" });
       if (tg) tg.close();
     } catch (error) {
-      alert("Havolani yuborib bo‘lmadi. Botda «Obunani tekshirish»ni bosing.");
+      openModal("Havolani yuborib bo‘lmadi.");
     } finally {
-      btn.disabled = false;
+      setLinkButtonsDisabled(!isActive());
     }
+  }
+
+  async function loadMe() {
+    const data = await api("/api/me");
+    state.user = data.user;
+    state.plans = data.plans;
+    state.subscription = data.subscription;
+    state.supportUrl = data.support_url || "";
+    state.brand = data.brand || state.brand;
+    applyBrand();
+  }
+
+  function loadPreview(kind) {
+    state.user = { id: "7279073491", first_name: "Kamron", username: "Kamron_HK7" };
+    state.plans = [
+      { id: "month_1", title: "1 oylik", days: 30, price: 20000, old_price: null },
+      { id: "month_6", title: "6 oylik", days: 180, price: 109000, old_price: 120000 }
+    ];
+    state.selectedPlanId = null;
+    state.supportUrl = "https://t.me/LeyliMedia_bot";
+    state.brand = {
+      name: "LEYLI MEDIA",
+      bot_username: "LeyliMedia_bot",
+      instagram_url: "https://instagram.com/",
+      youtube_url: "https://youtube.com/"
+    };
+    state.subscription =
+      kind === "active"
+        ? { active: true, expires_at: "2026-11-06T00:00:00.000Z", plan_id: "month_1" }
+        : { active: false, expires_at: null, plan_id: null };
+    applyBrand();
   }
 
   async function boot() {
     if (preview) {
       loadPreview(preview);
-      if (state.subscription.active) {
-        renderActive();
+      if (startPage === "panel" || preview === "active") {
+        showPage("panel");
       } else {
-        renderHome();
+        showPage(startPage);
       }
+      return;
+    }
+
+    if (params.get("paid") === "1") {
+      if (!tg || !tg.initData) {
+        show("error");
+        return;
+      }
+
+      tg.ready();
+      tg.expand();
+      hideNativeButton();
+
+      try {
+        await loadMe();
+      } catch (error) {
+        show("error");
+        return;
+      }
+
+      showPage("done");
+
+      if (isActive()) {
+        try {
+          await api("/api/send-link", { method: "POST", body: "{}" });
+        } catch (error) {
+          /* bot PerformTransaction paytida ham yuborgan bo‘lishi mumkin */
+        }
+      }
+
       return;
     }
 
@@ -162,15 +400,12 @@
 
     tg.ready();
     tg.expand();
+    hideNativeButton();
     try {
-      tg.setHeaderColor("#050505");
-      tg.setBackgroundColor("#050505");
+      tg.setHeaderColor("#1c1c1e");
+      tg.setBackgroundColor("#1c1c1e");
     } catch (error) {
       /* eski Telegram versiyalarida rang sozlamasi bo‘lmasligi mumkin */
-    }
-
-    if (tg.BackButton) {
-      tg.BackButton.onClick(renderHome);
     }
 
     try {
@@ -180,17 +415,68 @@
       return;
     }
 
-    if (state.subscription && state.subscription.active) {
-      renderActive();
-    } else {
-      renderHome();
-    }
+    showPage(startPage);
   }
 
-  document.getElementById("buy-btn").addEventListener("click", renderPay);
-  document.getElementById("pay-btn").addEventListener("click", checkout);
+  document.getElementById("buy-btn").addEventListener("click", () => {
+    if (!selectedPlan()) {
+      return;
+    }
+
+    haptic("medium");
+    showPage("pay");
+  });
+  document.getElementById("pay-next").addEventListener("click", () => {
+    haptic("medium");
+    checkout();
+  });
+  document.getElementById("pay-back").addEventListener("click", () => {
+    haptic("light");
+    showPage("plans");
+  });
+  document.getElementById("detail-btn").addEventListener("click", () => {
+    haptic("light");
+    openModal(DETAIL_TEXT);
+  });
+  document.getElementById("done-back").addEventListener("click", () => showPage("plans"));
+  document.getElementById("done-link").addEventListener("click", async () => {
+    if (!preview && !isActive()) {
+      try {
+        await loadMe();
+        renderDone();
+      } catch (error) {
+        openModal("Holatni yangilab bo‘lmadi.");
+        return;
+      }
+    }
+
+    await sendLink();
+  });
+  document.getElementById("about-buy").addEventListener("click", () => showPage("plans"));
+  document.getElementById("panel-buy-btn").addEventListener("click", () => showPage("plans"));
   document.getElementById("link-btn").addEventListener("click", sendLink);
-  document.getElementById("extend-btn").addEventListener("click", renderPay);
+  document.getElementById("menu-pay").addEventListener("click", () => showPage("pay"));
+  document.getElementById("menu-subs").addEventListener("click", () => {
+    openModal(
+      isActive()
+        ? "Obunangiz " + formatDate(state.subscription.expires_at) + " gacha faol."
+        : "Hozircha faol obuna yo‘q."
+    );
+  });
+  document.getElementById("modal-close").addEventListener("click", closeModal);
+  document.getElementById("modal-x").addEventListener("click", closeModal);
+  document.getElementById("refresh-btn").addEventListener("click", async () => {
+    if (preview) {
+      return;
+    }
+
+    try {
+      await loadMe();
+      renderPanel();
+    } catch (error) {
+      openModal("Ma’lumotni yangilab bo‘lmadi.");
+    }
+  });
 
   boot();
 })();

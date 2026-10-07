@@ -52,18 +52,22 @@ function createTelegram({ pool, config }) {
   const api = bot.api;
 
   const webAppUrl = config.publicUrl ? `${config.publicUrl}/` : "";
+  const aboutUrl = config.publicUrl ? `${config.publicUrl}/?page=about` : "";
+  const panelUrl = config.publicUrl ? `${config.publicUrl}/?page=panel` : "";
 
   function mainKeyboard() {
     const keyboard = new InlineKeyboard();
 
     if (webAppUrl) {
-      keyboard.webApp("💎 Obuna ulash", webAppUrl).row();
+      keyboard.webApp("Obuna ulash", webAppUrl).row();
     }
 
-    keyboard.text("✅ Obunani tekshirish", "check");
+    if (aboutUrl) {
+      keyboard.webApp("LEYLI MEDIA", aboutUrl).row();
+    }
 
-    if (config.supportUrl) {
-      keyboard.row().url("💬 Yordam", config.supportUrl);
+    if (panelUrl) {
+      keyboard.webApp("Boshqaruv paneli", panelUrl).row();
     }
 
     return keyboard;
@@ -124,6 +128,14 @@ function createTelegram({ pool, config }) {
       if (!config.channelId) {
         console.error("❌ CHANNEL_ID o'rnatilmagan");
         return false;
+      }
+
+      try {
+        await api.unbanChatMember(config.channelId, Number(userId), {
+          only_if_banned: true
+        });
+      } catch (error) {
+        /* avval ban bo'lmagan bo'lishi mumkin */
       }
 
       let inviteLink;
@@ -208,11 +220,8 @@ function createTelegram({ pool, config }) {
       : "";
 
     await ctx.reply(
-      `Assalomu alaykum, ${escapeHtml(ctx.from.first_name)}! 👋\n\n` +
-        "💎 <b>LEYLI MEDIA Premium</b> kanaliga xush kelibsiz!\n\n" +
-        "Eksklyuziv musiqa, yangi ijodiy loyihalar, audio materiallar va maxsus kontent — barchasi bitta yopiq kanalda." +
-        status +
-        "\n\nObuna uchun pastdagi tugmani bosing 👇",
+      `✨ Assalomu alaykum! LEYLI MEDIA Premium botga xush kelibsiz. Bu yerda yopiq kanal obunasini tez va oson xarid qilishingiz mumkin.` +
+        status,
       { parse_mode: "HTML", reply_markup: mainKeyboard() }
     );
   });

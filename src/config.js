@@ -13,6 +13,13 @@ const PLANS = [
     title: "1 oylik",
     days: 30,
     priceSom: 20000
+  },
+  {
+    id: "month_6",
+    title: "6 oylik",
+    days: 180,
+    priceSom: 109000,
+    oldPriceSom: 120000
   }
 ];
 
@@ -33,7 +40,8 @@ function publicPlan(plan) {
     id: plan.id,
     title: plan.title,
     days: plan.days,
-    price: plan.priceSom
+    price: plan.priceSom,
+    old_price: plan.oldPriceSom || null
   };
 }
 
@@ -51,6 +59,9 @@ function loadConfig(env = process.env) {
     botToken,
     channelId: env.CHANNEL_ID || "",
     supportUrl: env.SUPPORT_URL || "",
+    botUsername: (env.BOT_USERNAME || "LeyliMedia_bot").replace(/^@/, ""),
+    instagramUrl: env.INSTAGRAM_URL || "",
+    youtubeUrl: env.YOUTUBE_URL || "",
 
     publicUrl: trimSlash(env.PUBLIC_URL || env.RENDER_EXTERNAL_URL),
     webhookSecret:
