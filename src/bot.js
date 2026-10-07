@@ -2,6 +2,7 @@ const { Bot, InlineKeyboard, webhookCallback } = require("grammy");
 
 const { upsertUser } = require("./db");
 const { getSubscription, isActive } = require("./subscriptions");
+const { claimPendingPayment } = require("./pending");
 
 const INVITE_LINK_TTL_SEC = 24 * 60 * 60;
 
@@ -208,6 +209,12 @@ function createTelegram({ pool, config }) {
   bot.command("start", async (ctx) => {
     await upsertUser(pool, ctx.from);
 
+    const claimed = await claimPendingPayment({
+      pool,
+      notifier,
+      telegramUserId: ctx.from.id
+    });
+
     const subscription = await getSubscription(pool, ctx.from.id);
 
     const status = isActive(subscription)
@@ -219,6 +226,10 @@ function createTelegram({ pool, config }) {
         status,
       { parse_mode: "HTML", reply_markup: mainKeyboard() }
     );
+
+    if (isActive(subscription) && !claimed.granted) {
+      await notifier.sendAccessLink(ctx.from.id, subscription.expires_at);
+    }
   });
 
   bot.callbackQuery("check", async (ctx) => {

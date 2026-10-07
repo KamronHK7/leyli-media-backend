@@ -79,6 +79,35 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
   body = await res.json();
   assert.match(decodeCheckoutToken(body.url), /(?:^|;)a=10900000(?:;|$)/);
 
+  res = await fetch(`${env.url}/api/claim-paid`, {
+    method: "POST",
+    headers: {
+      Authorization: "tma " + initData,
+      "Content-Type": "application/json"
+    },
+    body: "{}"
+  });
+  body = await res.json();
+  assert.equal(res.status, 200);
+  assert.equal(body.granted, true);
+  assert.equal(body.subscription.active, true);
+  assert.equal(env.notifier.calls.some((c) => c[0] === "paid"), true);
+
+  const firstExpiry = new Date(body.expires_at).getTime();
+
+  res = await fetch(`${env.url}/api/claim-paid`, {
+    method: "POST",
+    headers: {
+      Authorization: "tma " + initData,
+      "Content-Type": "application/json"
+    },
+    body: "{}"
+  });
+  body = await res.json();
+  assert.equal(body.granted, false);
+  assert.equal(body.already, true);
+  assert.ok(Math.abs(new Date(body.expires_at).getTime() - firstExpiry) < 2000);
+
   res = await fetch(`${env.url}/payme`);
   assert.equal(res.status, 200);
   body = await res.json();

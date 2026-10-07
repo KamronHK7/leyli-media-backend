@@ -2,7 +2,8 @@ const crypto = require("crypto");
 const express = require("express");
 
 const { getPlanByAmount, getPlanById } = require("./config");
-const { grantSubscription, revokeSubscription } = require("./subscriptions");
+const { getSubscription, grantSubscription, revokeSubscription } = require("./subscriptions");
+const { markPendingClaimed, wasRecentlyClaimed } = require("./pending");
 
 const MESSAGES = {
   unauthorized: {
@@ -393,13 +394,23 @@ function createPaymeRouter({ pool, config, hooks = {} }) {
             getPlanByAmount(transaction.amount);
 
           if (plan) {
-            const expiresAt = await grantSubscription(
+            const alreadyClaimed = await wasRecentlyClaimed(
               pool,
-              transaction.telegram_user_id,
-              plan
+              transaction.telegram_user_id
             );
 
-            if (hooks.onPerformed) {
+            const expiresAt = alreadyClaimed
+              ? (await getSubscription(pool, transaction.telegram_user_id))
+                  ?.expires_at
+              : await grantSubscription(
+                  pool,
+                  transaction.telegram_user_id,
+                  plan
+                );
+
+            await markPendingClaimed(pool, transaction.telegram_user_id);
+
+            if (hooks.onPerformed && expiresAt) {
               Promise.resolve(
                 hooks.onPerformed({
                   telegramUserId: transaction.telegram_user_id,
