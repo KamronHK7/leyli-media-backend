@@ -114,4 +114,26 @@ test("Payme Merchant API sandbox ssenariylari", async (t) => {
 
   r = await rpc(env.url, "GetStatement", { from: now - 1000, to: now + 1000 }, AUTH);
   assert.equal(r.body.result.transactions.length, 1);
+
+  const oldTime = Date.now() - 10 * 60 * 1000;
+  await sandbox.pool.query(
+    `
+      INSERT INTO payme_transactions
+        (payme_id, telegram_user_id, amount, state, create_time, payme_time, cancel_time, reason)
+      VALUES
+        ('old-timeout', '12345', 2000000, -1, $1, $1, $1, 4)
+    `,
+    [oldTime]
+  );
+  r = await rpc(
+    sandbox.url,
+    "GetStatement",
+    { from: oldTime - 1000, to: Date.now() + 1000 },
+    paymeAuth("Paycom", "sandbox_key_value"),
+    { "Test-Operation": "Paycom" }
+  );
+  assert.equal(
+    r.body.result.transactions.some((t) => t.id === "old-timeout"),
+    false
+  );
 });

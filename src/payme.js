@@ -510,8 +510,13 @@ function createPaymeRouter({ pool, config, hooks = {} }) {
           [from, to]
         );
 
+        const sandboxFreshAfter = req.paymeSandbox ? Date.now() - 3 * 60 * 1000 : 0;
+        const rows = result.rows.filter((t) =>
+          req.paymeSandbox ? Number(t.create_time) >= sandboxFreshAfter : true
+        );
+
         return rpcResult(res, id, {
-          transactions: result.rows.map((t) => ({
+          transactions: rows.map((t) => ({
             id: t.payme_id,
             time: Number(t.payme_time || t.create_time),
             amount: Number(t.amount),
