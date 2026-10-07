@@ -41,6 +41,8 @@ function buildCheckoutUrl(args) {
   return buildPayFormUrl(args);
 }
 
+const KASSA_PHONE = "998900000000";
+
 function payFormPage({ merchant, amount, userId, fullName, username, callback, action }) {
   const m = escapeHtml(merchant);
   const a = escapeHtml(amount);
@@ -55,6 +57,7 @@ function payFormPage({ merchant, amount, userId, fullName, username, callback, a
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="referrer" content="origin">
   <title>Payme</title>
   <style>
     html, body { margin: 0; min-height: 100%; background: #1c1c1e; color: #fff;
@@ -75,6 +78,7 @@ function payFormPage({ merchant, amount, userId, fullName, username, callback, a
       <input type="hidden" name="account[user_id]" value="${uid}">
       <input type="hidden" name="account[full_name]" value="${name}">
       <input type="hidden" name="account[username]" value="${uname}">
+      <input type="hidden" name="account[phone_number]" value="${KASSA_PHONE}">
       <input type="hidden" name="lang" value="uz">
       <input type="hidden" name="callback" value="${c}">
       <input type="hidden" name="callback_timeout" value="15000">

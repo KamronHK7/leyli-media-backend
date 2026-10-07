@@ -92,6 +92,7 @@ function createApp({ pool, config, notifier, webhookHandler }) {
     to'g'ridan-to'g'ri To'lash chekini ochadi.
   */
   app.get("/pay", (req, res) => {
+    res.setHeader("Referrer-Policy", "origin");
     const amount = String(req.query.a || "");
     const userId = String(req.query.uid || "");
     const fullName = String(req.query.n || "").trim();

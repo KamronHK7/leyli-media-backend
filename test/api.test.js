@@ -59,7 +59,7 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
   assert.match(html, /name="account\[user_id\]" value="777"/);
   assert.match(html, /name="account\[full_name\]" value="Kamronbek Xoliqov"/);
   assert.match(html, /name="account\[username\]" value="@kamron"/);
-  assert.equal(html.includes("phone_number"), false);
+  assert.match(html, /name="account\[phone_number\]"/);
   assert.match(html, /action="https:\/\/checkout\.paycom\.uz"/);
 
   res = await fetch(`${env.url}/api/checkout`, {
