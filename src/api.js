@@ -2,34 +2,19 @@ const express = require("express");
 
 const { validateInitData } = require("./telegramAuth");
 const { upsertUser } = require("./db");
-const { PLANS, publicPlan, getPlanById, amountTiyin } = require("./config");
+const { PLANS, publicPlan, getPlanById } = require("./config");
 const { getSubscription, isActive } = require("./subscriptions");
+const { buildPayFormUrl } = require("./paymeCheckout");
 
 const LINK_COOLDOWN_MS = 20 * 1000;
 
 /*
-  Payme checkout havolasi:
-  https://checkout.paycom.uz/<base64("m=<kassa>;ac.user_id=<id>;a=<tiyin>;l=uz;c=<qaytish>")>
-  Foydalanuvchi Payme'da hech narsa kiritmaydi, faqat to'laydi.
+  checkout.paycom.uz ni to'g'ridan-to'g'ri ochish Payme ilovasini
+  asosiy ekranga olib ketadi (Universal Links). Shuning uchun avval
+  o'z /pay sahifamiz ochiladi va u POST forma yuboradi.
 */
 function buildCheckoutUrl({ config, userId, plan }) {
-  const parts = [
-    `m=${config.paymeMerchantId}`,
-    `ac.user_id=${userId}`,
-    `a=${amountTiyin(plan)}`,
-    "l=uz"
-  ];
-
-  if (config.publicUrl) {
-    // ?paid=1 base64 ichida "/" hosil qiladi va checkout URL ni ikkiga bo'lib yuboradi
-    parts.push(`c=${config.publicUrl}/paid`);
-  }
-
-  // Haqiqiy kassa ID test.paycom.uz da topilmaydi — doim production checkout
-  const base = "https://checkout.paycom.uz";
-  const token = Buffer.from(parts.join(";")).toString("base64");
-
-  return `${base}/${encodeURIComponent(token)}`;
+  return buildPayFormUrl({ config, userId, plan });
 }
 
 function createApiRouter({ pool, config, notifier }) {

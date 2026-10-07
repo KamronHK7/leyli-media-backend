@@ -5,6 +5,7 @@ const express = require("express");
 const { createPaymeRouter, rpcError, MESSAGES } = require("./payme");
 const { createApiRouter } = require("./api");
 const { runExpiryJob } = require("./jobs");
+const { payFormPage, checkoutAction } = require("./paymeCheckout");
 
 function createApp({ pool, config, notifier, webhookHandler }) {
   const app = express();
@@ -74,6 +75,35 @@ function createApp({ pool, config, notifier, webhookHandler }) {
       console.error("❌ CRON:", error);
       res.status(500).json({ ok: false, error: "server_error" });
     }
+  });
+
+  /*
+    Payme ilovasi checkout.paycom.uz ni ushlab, hamyon bosh sahifasini ochadi.
+    Shu sahifa POST yuboradi — to'lov formasi brauzer/WebView ichida qoladi.
+  */
+  app.get("/pay", (req, res) => {
+    const amount = String(req.query.a || "");
+    const userId = String(req.query.uid || "");
+    const merchant = config.paymeMerchantId || "";
+    const callback = config.publicUrl ? `${config.publicUrl}/paid` : "";
+
+    if (!merchant || !/^\d{3,12}$/.test(amount) || !/^\d{1,20}$/.test(userId)) {
+      res.status(400).type("html").send("<p>To‘lov parametrlari noto‘g‘ri.</p>");
+      return;
+    }
+
+    res
+      .status(200)
+      .type("html")
+      .send(
+        payFormPage({
+          merchant,
+          amount,
+          userId,
+          callback,
+          action: checkoutAction(config)
+        })
+      );
   });
 
   /* Mini app (statik fayllar) */

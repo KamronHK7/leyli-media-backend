@@ -290,23 +290,9 @@
   }
 
   function openPayme(url) {
-    // Telegram WebView ichida Payme ilovasi ochilmaydi — faqat tashqi brauzer.
-    // location.assign qilmaslik kerak: u mini appni checkout sahifasiga olib ketadi.
-    if (tg && typeof tg.openLink === "function") {
-      try {
-        tg.openLink(url, { try_instant_view: false });
-        return;
-      } catch (error) {
-        try {
-          tg.openLink(url);
-          return;
-        } catch (inner) {
-          window.location.assign(url);
-          return;
-        }
-      }
-    }
-
+    // checkout.paycom.uz ni openLink qilmaslik: Payme ilovasi Universal Link
+    // orqali ochilib, to'lov o'rniga asosiy ekranni ko'rsatadi.
+    // /pay o'z domenimiz — POST forma Telegram WebView ichida qoladi.
     window.location.assign(url);
   }
 
