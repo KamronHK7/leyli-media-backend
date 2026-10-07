@@ -2,7 +2,10 @@
   const tg = window.Telegram && window.Telegram.WebApp;
   const params = new URLSearchParams(location.search);
   const preview = params.get("preview");
-  const startPage = params.get("page") || "plans";
+  const API_BASE = /github\.io$/i.test(location.hostname)
+    ? "https://leyli-media-backend.onrender.com"
+    : "";
+  const startPage = params.get("page") || "about";
 
   const screens = {
     loading: document.getElementById("screen-loading"),
@@ -60,7 +63,7 @@
   }
 
   async function api(path, options = {}) {
-    const res = await fetch(path, {
+    const res = await fetch(API_BASE + path, {
       ...options,
       headers: {
         "Content-Type": "application/json",

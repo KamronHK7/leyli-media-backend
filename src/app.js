@@ -63,8 +63,28 @@ function createApp({ pool, config, notifier, webhookHandler }) {
     })
   );
 
+  function allowMiniAppCors(req, res, next) {
+    const origin = String(req.headers.origin || "");
+
+    if (
+      origin === "https://ksarvinoz54-netizen.github.io" ||
+      origin === "https://leyli-media-backend.onrender.com"
+    ) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      res.setHeader("Vary", "Origin");
+    }
+
+    if (req.method === "OPTIONS") {
+      return res.status(204).end();
+    }
+
+    next();
+  }
+
   /* Mini app uchun API */
-  app.use("/api", createApiRouter({ pool, config, notifier }));
+  app.use("/api", allowMiniAppCors, createApiRouter({ pool, config, notifier }));
 
   /* Telegram webhook */
   if (webhookHandler) {
