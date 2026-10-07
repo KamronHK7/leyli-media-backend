@@ -2,6 +2,12 @@ const { Bot, InlineKeyboard, webhookCallback } = require("grammy");
 
 const { upsertUser } = require("./db");
 const { getSubscription, isActive } = require("./subscriptions");
+const {
+  createApproval,
+  getApproval,
+  applyApproval,
+  rejectApproval
+} = require("./approvals");
 
 const INVITE_LINK_TTL_SEC = 24 * 60 * 60;
 
@@ -76,6 +82,60 @@ function createTelegram({ pool, config }) {
     }
 
     return keyboard;
+  }
+
+  function staffIds() {
+    const ids = new Set(config.adminTelegramIds || []);
+
+    if (config.ownerTelegramId) {
+      ids.add(String(config.ownerTelegramId));
+    }
+
+    return ids;
+  }
+
+  function isStaff(userId) {
+    return staffIds().has(String(userId));
+  }
+
+  function isOwner(userId) {
+    return Boolean(config.ownerTelegramId) && String(userId) === String(config.ownerTelegramId);
+  }
+
+  function approvalKeyboard(approvalId) {
+    return new InlineKeyboard()
+      .text("✅ Havola yuborish", `ok:${approvalId}`)
+      .text("❌ Yo‘q", `no:${approvalId}`);
+  }
+
+  async function notifyOwnerPayment(approval) {
+    const ownerId = config.ownerTelegramId;
+
+    if (!ownerId) {
+      return false;
+    }
+
+    const name = approval.full_name ? `\nIsm: ${escapeHtml(approval.full_name)}` : "";
+    const nick = approval.username ? `\nUsername: @${escapeHtml(String(approval.username).replace(/^@/, ""))}` : "";
+    const amount = approval.amount_som
+      ? `\nSumma: <b>${Number(approval.amount_som).toLocaleString("ru-RU")} so‘m</b>`
+      : "";
+
+    await api.sendMessage(
+      Number(ownerId),
+      `💳 <b>To‘lov aniqlandi</b>\n\n` +
+        `User ID: <code>${escapeHtml(approval.telegram_user_id)}</code>` +
+        name +
+        nick +
+        amount +
+        `\n\nShu foydalanuvchiga kanal havolasini yuborasizmi?`,
+      {
+        parse_mode: "HTML",
+        reply_markup: approvalKeyboard(approval.id)
+      }
+    );
+
+    return true;
   }
 
   async function safeSend(userId, text, extra = {}) {
@@ -221,6 +281,97 @@ function createTelegram({ pool, config }) {
     );
   });
 
+  bot.command("paid", async (ctx) => {
+    await upsertUser(pool, ctx.from);
+
+    if (!isStaff(ctx.from.id)) {
+      return;
+    }
+
+    if (!config.ownerTelegramId) {
+      await ctx.reply("OWNER_TELEGRAM_ID hali qo‘yilmagan.");
+      return;
+    }
+
+    const parts = String(ctx.match || "").trim().split(/\s+/);
+    const userId = parts[0] || "";
+    const amountSom = parts[1] && /^\d+$/.test(parts[1]) ? Number(parts[1]) : 20000;
+
+    if (!/^\d{3,20}$/.test(userId)) {
+      await ctx.reply(
+        "Payme chekdan <b>ID пользователя</b> ni yozing:\n<code>/paid 6336262541</code>\n\nIxtiyoriy summa: <code>/paid 6336262541 20000</code>",
+        { parse_mode: "HTML" }
+      );
+      return;
+    }
+
+    const approval = await createApproval(pool, {
+      telegramUserId: userId,
+      amountSom,
+      source: isOwner(ctx.from.id) ? "owner" : "admin"
+    });
+
+    const sent = await notifyOwnerPayment(approval);
+
+    if (isOwner(ctx.from.id)) {
+      return;
+    }
+
+    await ctx.reply(
+      sent
+        ? "Kanal egasiga tasdiq yuborildi."
+        : "Tasdiq yuborilmadi. OWNER_TELEGRAM_ID ni tekshiring."
+    );
+  });
+
+  bot.callbackQuery(/^ok:(\d+)$/, async (ctx) => {
+    if (!isOwner(ctx.from.id)) {
+      await ctx.answerCallbackQuery({ text: "Faqat kanal egasi tasdiqlaydi", show_alert: true });
+      return;
+    }
+
+    const approval = await getApproval(pool, ctx.match[1]);
+
+    if (!approval || approval.status !== "pending") {
+      await ctx.answerCallbackQuery({ text: "Bu so‘rov allaqachon yopilgan" });
+      return;
+    }
+
+    await ctx.answerCallbackQuery({ text: "Yuborilmoqda…" });
+
+    try {
+      await applyApproval({ pool, notifier, approval });
+      await ctx.editMessageText(
+        (ctx.callbackQuery.message && ctx.callbackQuery.message.text
+          ? ctx.callbackQuery.message.text + "\n\n"
+          : "") + "✅ Havola foydalanuvchiga yuborildi."
+      );
+    } catch (error) {
+      console.error("❌ APPROVE:", error.message);
+      await ctx.reply("Havolani yuborib bo‘lmadi: " + error.message);
+    }
+  });
+
+  bot.callbackQuery(/^no:(\d+)$/, async (ctx) => {
+    if (!isOwner(ctx.from.id)) {
+      await ctx.answerCallbackQuery({ text: "Faqat kanal egasi", show_alert: true });
+      return;
+    }
+
+    const approval = await getApproval(pool, ctx.match[1]);
+
+    if (approval && approval.status === "pending") {
+      await rejectApproval(pool, approval);
+    }
+
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText(
+      (ctx.callbackQuery.message && ctx.callbackQuery.message.text
+        ? ctx.callbackQuery.message.text + "\n\n"
+        : "") + "❌ Rad etildi. Havola yuborilmadi."
+    );
+  });
+
   bot.callbackQuery("check", async (ctx) => {
     await ctx.answerCallbackQuery();
 
@@ -260,6 +411,10 @@ function createTelegram({ pool, config }) {
       return;
     }
 
+    if (ctx.message.text && ctx.message.text.startsWith("/")) {
+      return;
+    }
+
     await ctx.reply("Quyidagi tugmalardan foydalaning 👇", {
       reply_markup: mainKeyboard()
     });
@@ -287,6 +442,16 @@ function createTelegram({ pool, config }) {
     });
 
     await api.setMyCommands([{ command: "start", description: "Boshlash" }]);
+
+    if (config.ownerTelegramId) {
+      await api.setMyCommands(
+        [
+          { command: "start", description: "Boshlash" },
+          { command: "paid", description: "To‘lovni tasdiqlash (User ID)" }
+        ],
+        { scope: { type: "chat", chat_id: Number(config.ownerTelegramId) } }
+      );
+    }
 
     await api.setChatMenuButton({
       menu_button: {

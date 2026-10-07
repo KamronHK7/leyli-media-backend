@@ -49,6 +49,13 @@ function trimSlash(value) {
   return value ? String(value).replace(/\/+$/, "") : "";
 }
 
+function parseIdList(value) {
+  return String(value || "")
+    .split(/[,\s]+/)
+    .map((item) => item.trim())
+    .filter((item) => /^\d{3,20}$/.test(item));
+}
+
 function loadConfig(env = process.env) {
   const botToken = env.BOT_TOKEN || "";
 
@@ -58,6 +65,8 @@ function loadConfig(env = process.env) {
 
     botToken,
     channelId: env.CHANNEL_ID || "",
+    ownerTelegramId: String(env.OWNER_TELEGRAM_ID || "").trim(),
+    adminTelegramIds: parseIdList(env.ADMIN_TELEGRAM_IDS),
     supportUrl: env.SUPPORT_URL || "",
     botUsername: (env.BOT_USERNAME || "LeyliMedia_bot").replace(/^@/, ""),
     instagramUrl: env.INSTAGRAM_URL || "",
@@ -100,5 +109,6 @@ module.exports = {
   getPlanById,
   getPlanByAmount,
   publicPlan,
+  parseIdList,
   loadConfig
 };

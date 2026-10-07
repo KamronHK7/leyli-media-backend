@@ -65,6 +65,21 @@ async function initDatabase(pool, config) {
     )
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS payment_approvals (
+      id SERIAL PRIMARY KEY,
+      telegram_user_id TEXT NOT NULL,
+      plan_id TEXT NOT NULL,
+      amount_som INTEGER,
+      full_name TEXT,
+      username TEXT,
+      source TEXT NOT NULL DEFAULT 'manual',
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      resolved_at TIMESTAMPTZ
+    )
+  `);
+
   // Faqat Payme sandbox testi uchun (PAYME_TEST_USER_ID=12345).
   // Sandbox tasdiqlangandan keyin bu o'zgaruvchini o'chiring.
   if (config && config.paymeTestUserId) {
