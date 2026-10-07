@@ -80,6 +80,9 @@ function loadConfig(env = process.env) {
     paymeTestKey: env.PAYME_TEST_KEY || "",
     paymeMerchantId: env.PAYME_MERCHANT_ID || "",
     paymeTestMode: env.PAYME_TEST_MODE === "true",
+    // Kassa production'da yoqilgach: PAYME_TEST_MODE=production
+    paymeUseProdCheckout:
+      env.PAYME_USE_PROD_CHECKOUT === "true" || env.PAYME_TEST_MODE === "production",
     paymeTestUserId: env.PAYME_TEST_USER_ID || "",
 
     // To'lanmagan Payme tranzaksiyasi 12 soatdan keyin bekor qilinadi

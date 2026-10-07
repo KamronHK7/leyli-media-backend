@@ -10,7 +10,9 @@ function escapeHtml(value) {
 }
 
 function checkoutAction(config) {
-  return config.paymeTestMode ? "https://checkout.test.paycom.uz" : "https://checkout.paycom.uz";
+  // Test kassa: https://test.paycom.uz (Payme POST docs).
+  // Production checkout.paycom.uz bu kassani topmaydi (-31601).
+  return config.paymeUseProdCheckout ? "https://checkout.paycom.uz" : "https://test.paycom.uz";
 }
 
 function buildCheckoutUrl({ config, userId, plan }) {
