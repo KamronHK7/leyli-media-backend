@@ -36,20 +36,14 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
   body = await res.json();
 
   assert.equal(body.ok, true);
-  assert.match(body.url, /\/pay\?/);
-  assert.match(body.url, /[?&]a=2000000(?:&|$)/);
-  assert.match(body.url, /[?&]uid=777(?:&|$)/);
-  assert.equal(body.url.includes("checkout.paycom.uz"), false);
-
-  const payPath = body.url.slice(body.url.indexOf("/pay?"));
-  res = await fetch(`${env.url}${payPath}`);
-  assert.equal(res.status, 200);
-  const html = await res.text();
-  assert.match(html, /name="merchant" value="merchant-id"/);
-  assert.match(html, /name="amount" value="2000000"/);
-  assert.match(html, /name="account\[user_id\]" value="777"/);
-  assert.match(html, /action="https:\/\/checkout\.paycom\.uz"/);
-  assert.match(html, /name="callback" value="https:\/\/leyli-media-backend\.onrender\.com\/paid"/);
+  assert.match(body.url, /^https:\/\/checkout\.paycom\.uz\/[A-Za-z0-9=]+$/);
+  const token = body.url.split("/").pop();
+  const decoded = Buffer.from(token, "base64").toString("utf8");
+  assert.match(decoded, /ac\.user_id=777/);
+  assert.match(decoded, /a=2000000/);
+  assert.match(decoded, /m=merchant-id/);
+  assert.match(decoded, /\/paid/);
+  assert.equal(decoded.includes("?"), false);
 
   res = await fetch(`${env.url}/api/checkout`, {
     method: "POST",
@@ -60,10 +54,8 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
     body: JSON.stringify({ plan_id: "month_6" })
   });
   body = await res.json();
-  assert.match(body.url, /[?&]a=10900000(?:&|$)/);
-
-  res = await fetch(`${env.url}/pay`);
-  assert.equal(res.status, 400);
+  const decodedSix = Buffer.from(body.url.split("/").pop(), "base64").toString("utf8");
+  assert.match(decodedSix, /a=10900000/);
 
   res = await fetch(`${env.url}/api/me`);
   assert.equal(res.status, 401);

@@ -290,9 +290,18 @@
   }
 
   function openPayme(url) {
-    // checkout.paycom.uz ni openLink qilmaslik: Payme ilovasi Universal Link
-    // orqali ochilib, to'lov o'rniga asosiy ekranni ko'rsatadi.
-    // /pay o'z domenimiz — POST forma Telegram WebView ichida qoladi.
+    // Telegram ichida ochilsa Payme «поставщик не найден» qaytaradi.
+    // openLink tashqi Payme ilovasida to'lov oynasini ochadi.
+    if (tg && typeof tg.openLink === "function") {
+      try {
+        tg.openLink(url, { try_instant_view: false });
+        return;
+      } catch (error) {
+        tg.openLink(url);
+        return;
+      }
+    }
+
     window.location.assign(url);
   }
 

@@ -4,18 +4,9 @@ const { validateInitData } = require("./telegramAuth");
 const { upsertUser } = require("./db");
 const { PLANS, publicPlan, getPlanById } = require("./config");
 const { getSubscription, isActive } = require("./subscriptions");
-const { buildPayFormUrl } = require("./paymeCheckout");
+const { buildCheckoutUrl } = require("./paymeCheckout");
 
 const LINK_COOLDOWN_MS = 20 * 1000;
-
-/*
-  checkout.paycom.uz ni to'g'ridan-to'g'ri ochish Payme ilovasini
-  asosiy ekranga olib ketadi (Universal Links). Shuning uchun avval
-  o'z /pay sahifamiz ochiladi va u POST forma yuboradi.
-*/
-function buildCheckoutUrl({ config, userId, plan }) {
-  return buildPayFormUrl({ config, userId, plan });
-}
 
 function createApiRouter({ pool, config, notifier }) {
   const router = express.Router();
