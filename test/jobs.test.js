@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const { createTestEnv } = require("./helpers");
 const { grantSubscription } = require("../src/subscriptions");
 const { getPlanById } = require("../src/config");
-const { runExpiryJob } = require("../src/jobs");
+const { runExpiryJob, recoverMissedPayments } = require("../src/jobs");
 
 test("Muddat tugagach kanaldan chiqarish va eslatma yuborish", async (t) => {
   const env = await createTestEnv();
@@ -31,4 +31,58 @@ test("Muddat tugagach kanaldan chiqarish va eslatma yuborish", async (t) => {
   assert.equal(summary.reminded, 1);
   assert.equal(env.notifier.calls.some((c) => c[0] === "kick"), true);
   assert.equal(env.notifier.calls.some((c) => c[0] === "remind"), true);
+});
+
+test("To'lov o'tib ketganda obunani qo'lda ochish", async (t) => {
+  const env = await createTestEnv();
+  t.after(() => env.server.close());
+
+  let res = await fetch(`${env.url}/cron/grant?secret=wrong&user_id=2096644395`);
+  assert.equal(res.status, 401);
+
+  res = await fetch(`${env.url}/cron/grant?secret=cron-secret&user_id=abc`);
+  assert.equal(res.status, 400);
+
+  res = await fetch(
+    `${env.url}/cron/grant?secret=cron-secret&user_id=2096644395&plan=month_1`
+  );
+  const body = await res.json();
+
+  assert.equal(res.status, 200);
+  assert.equal(body.ok, true);
+  assert.equal(body.user_id, "2096644395");
+  assert.equal(body.plan, "month_1");
+  assert.ok(new Date(body.expires_at) > new Date());
+  assert.equal(env.notifier.calls.some((c) => c[0] === "paid"), true);
+
+  const sub = await env.pool.query(
+    `SELECT * FROM subscriptions WHERE telegram_user_id = '2096644395'`
+  );
+  assert.equal(sub.rows.length, 1);
+
+  const first = await recoverMissedPayments({
+    pool: env.pool,
+    notifier: env.notifier
+  });
+  assert.equal(first.skipped, 1);
+  assert.equal(first.granted, 0);
+});
+
+test("O'tib ketgan to'lovni server ishga tushganda tiklash", async (t) => {
+  const env = await createTestEnv();
+  t.after(() => env.server.close());
+
+  const first = await recoverMissedPayments({
+    pool: env.pool,
+    notifier: env.notifier
+  });
+  assert.equal(first.granted, 1);
+  assert.equal(env.notifier.calls.some((c) => c[0] === "paid"), true);
+
+  const second = await recoverMissedPayments({
+    pool: env.pool,
+    notifier: env.notifier
+  });
+  assert.equal(second.granted, 0);
+  assert.equal(second.skipped, 1);
 });

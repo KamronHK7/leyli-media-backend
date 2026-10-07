@@ -73,7 +73,7 @@ function loadConfig(env = process.env) {
             .digest("hex")
             .slice(0, 32)
         : ""),
-    cronSecret: env.CRON_SECRET || "",
+    cronSecret: env.CRON_SECRET || env.BOT_SYNC_SECRET || "",
 
     paymeLogin: env.PAYME_LOGIN || "",
     paymeKey: env.PAYME_KEY || "",

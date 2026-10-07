@@ -131,6 +131,8 @@ function createPaymeRouter({ pool, config, hooks = {} }) {
     const reject = () =>
       rpcError(res, req.body?.id, -32504, MESSAGES.unauthorized);
 
+    console.log("📥 PAYME HIT", req.body?.method || "no-method");
+
     const isSandbox =
       String(req.headers["test-operation"] || "").toLowerCase() === "paycom";
     const expectedKey = isSandbox ? liveKeys.sandbox : liveKeys.production;
@@ -143,6 +145,7 @@ function createPaymeRouter({ pool, config, hooks = {} }) {
     const auth = req.headers.authorization;
 
     if (!auth || !auth.startsWith("Basic ")) {
+      console.error("❌ PAYME AUTH: Authorization yo'q");
       return reject();
     }
 
@@ -164,6 +167,7 @@ function createPaymeRouter({ pool, config, hooks = {} }) {
     const password = decoded.substring(separator + 1);
 
     if (!safeEqual(login, config.paymeLogin) || !safeEqual(password, expectedKey)) {
+      console.error("❌ PAYME AUTH: login/kalit mos emas");
       return reject();
     }
 

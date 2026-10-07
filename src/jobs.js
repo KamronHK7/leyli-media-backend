@@ -1,4 +1,52 @@
-const { DAY_MS } = require("./subscriptions");
+const { getPlanById } = require("./config");
+const { DAY_MS, getSubscription, isActive, grantSubscription } = require("./subscriptions");
+
+/*
+  Payme pul oldi, lekin Merchant API (PerformTransaction) bizga
+  kelmagan to'lovlar. Server ishga tushganda bir marta tiklanadi.
+  Faol obuna bo'lsa, qayta qo'shilmaydi.
+*/
+const MISSED_PAYMENTS = [{ userId: "2096644395", planId: "month_1" }];
+
+async function recoverMissedPayments({ pool, notifier }) {
+  const summary = { granted: 0, skipped: 0, errors: 0 };
+
+  for (const item of MISSED_PAYMENTS) {
+    try {
+      const plan = getPlanById(item.planId);
+
+      if (!plan) {
+        continue;
+      }
+
+      const current = await getSubscription(pool, item.userId);
+
+      if (isActive(current)) {
+        summary.skipped += 1;
+        continue;
+      }
+
+      await pool.query(
+        `
+          INSERT INTO telegram_users (telegram_user_id, first_name)
+          VALUES ($1, 'mijoz')
+          ON CONFLICT (telegram_user_id) DO NOTHING
+        `,
+        [item.userId]
+      );
+
+      const expiresAt = await grantSubscription(pool, item.userId, plan);
+      console.log("🔓 RECOVER:", item.userId, plan.id, expiresAt.toISOString());
+      await notifier.sendPaymentConfirmed(item.userId, expiresAt);
+      summary.granted += 1;
+    } catch (error) {
+      summary.errors += 1;
+      console.error("❌ RECOVER:", item.userId, error.message);
+    }
+  }
+
+  return summary;
+}
 
 /*
   Muddati tugagan obunalarni kanaldan chiqaradi va tugashiga yaqin
@@ -68,4 +116,4 @@ async function runExpiryJob({ pool, notifier, config, now = new Date() }) {
   return summary;
 }
 
-module.exports = { runExpiryJob };
+module.exports = { runExpiryJob, recoverMissedPayments };

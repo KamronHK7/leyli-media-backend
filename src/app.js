@@ -2,10 +2,22 @@ const path = require("path");
 const crypto = require("crypto");
 const express = require("express");
 
+const { getPlanById } = require("./config");
 const { createPaymeRouter, rpcError, MESSAGES } = require("./payme");
 const { createApiRouter } = require("./api");
 const { runExpiryJob } = require("./jobs");
+const { grantSubscription } = require("./subscriptions");
 const { payFormPage, checkoutAction } = require("./paymeCheckout");
+
+function cronAuthorized(req, config) {
+  const given = String(req.query.secret || "");
+
+  return Boolean(
+    config.cronSecret &&
+      given.length === config.cronSecret.length &&
+      crypto.timingSafeEqual(Buffer.from(given), Buffer.from(config.cronSecret))
+  );
+}
 
 function createApp({ pool, config, notifier, webhookHandler }) {
   const app = express();
@@ -65,14 +77,7 @@ function createApp({ pool, config, notifier, webhookHandler }) {
     GET /cron/expire?secret=CRON_SECRET
   */
   app.get("/cron/expire", async (req, res) => {
-    const given = String(req.query.secret || "");
-
-    const allowed =
-      config.cronSecret &&
-      given.length === config.cronSecret.length &&
-      crypto.timingSafeEqual(Buffer.from(given), Buffer.from(config.cronSecret));
-
-    if (!allowed) {
+    if (!cronAuthorized(req, config)) {
       return res.status(401).json({ ok: false, error: "unauthorized" });
     }
 
@@ -81,6 +86,53 @@ function createApp({ pool, config, notifier, webhookHandler }) {
       res.json({ ok: true, ...summary });
     } catch (error) {
       console.error("❌ CRON:", error);
+      res.status(500).json({ ok: false, error: "server_error" });
+    }
+  });
+
+  /*
+    Payme pul oldi, lekin Merchant API chaqirmasa (endpoint ishlamasa)
+    obunani qo'lda ochish: GET /cron/grant?secret=CRON_SECRET&user_id=...&plan=month_1
+  */
+  app.get("/cron/grant", async (req, res) => {
+    if (!cronAuthorized(req, config)) {
+      return res.status(401).json({ ok: false, error: "unauthorized" });
+    }
+
+    const userId = String(req.query.user_id || "").trim();
+    const plan = getPlanById(String(req.query.plan || "month_1"));
+
+    if (!/^\d{1,20}$/.test(userId) || !plan) {
+      return res.status(400).json({ ok: false, error: "bad_params" });
+    }
+
+    try {
+      await pool.query(
+        `
+          INSERT INTO telegram_users (telegram_user_id, first_name)
+          VALUES ($1, 'mijoz')
+          ON CONFLICT (telegram_user_id) DO NOTHING
+        `,
+        [userId]
+      );
+
+      const expiresAt = await grantSubscription(pool, userId, plan);
+      console.log("🔓 GRANT:", userId, plan.id, expiresAt.toISOString());
+
+      try {
+        await notifier.sendPaymentConfirmed(userId, expiresAt);
+      } catch (error) {
+        console.error("❌ GRANT BOT:", error.message);
+      }
+
+      res.json({
+        ok: true,
+        user_id: userId,
+        plan: plan.id,
+        expires_at: expiresAt
+      });
+    } catch (error) {
+      console.error("❌ GRANT:", error);
       res.status(500).json({ ok: false, error: "server_error" });
     }
   });
