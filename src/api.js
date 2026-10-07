@@ -1,10 +1,10 @@
 const express = require("express");
 
 const { validateInitData } = require("./telegramAuth");
-const { upsertUser, getUserPhone } = require("./db");
+const { upsertUser } = require("./db");
 const { PLANS, publicPlan, getPlanById } = require("./config");
 const { getSubscription, isActive } = require("./subscriptions");
-const { buildCheckoutUrl, payerDisplayName, normalizePhone } = require("./paymeCheckout");
+const { buildCheckoutUrl, payerDisplayName, payerUsername } = require("./paymeCheckout");
 
 const LINK_COOLDOWN_MS = 20 * 1000;
 
@@ -54,18 +54,18 @@ function createApiRouter({ pool, config, notifier }) {
 
       const subscription = await getSubscription(pool, req.tgUser.id);
       const userId = String(req.tgUser.id);
-      const phone = await getUserPhone(pool, userId);
       const fullName = payerDisplayName(req.tgUser);
+      const username = payerUsername(req.tgUser);
       const checkoutUrls = {};
 
-      if (config.paymeMerchantId && fullName && phone) {
+      if (config.paymeMerchantId && fullName) {
         for (const plan of PLANS) {
           checkoutUrls[plan.id] = buildCheckoutUrl({
             config,
             userId,
             plan,
             fullName,
-            phone
+            username
           });
         }
       }
@@ -77,8 +77,7 @@ function createApiRouter({ pool, config, notifier }) {
           first_name: req.tgUser.first_name || "",
           last_name: req.tgUser.last_name || "",
           username: req.tgUser.username || "",
-          photo_url: req.tgUser.photo_url || "",
-          phone
+          photo_url: req.tgUser.photo_url || ""
         },
         plans: PLANS.map(publicPlan),
         checkout_urls: checkoutUrls,
@@ -108,14 +107,14 @@ function createApiRouter({ pool, config, notifier }) {
         return res.status(400).json({ ok: false, error: "invalid_plan" });
       }
 
-      const phone = normalizePhone(req.body?.phone) || (await getUserPhone(pool, req.tgUser.id));
       const fullName = payerDisplayName(req.tgUser);
+      const username = payerUsername(req.tgUser);
 
-      if (!fullName || !phone) {
-        return res.status(400).json({ ok: false, error: "phone_required" });
+      if (!fullName) {
+        return res.status(400).json({ ok: false, error: "unauthorized" });
       }
 
-      await upsertUser(pool, { ...req.tgUser, phone });
+      await upsertUser(pool, req.tgUser);
 
       res.json({
         ok: true,
@@ -124,7 +123,7 @@ function createApiRouter({ pool, config, notifier }) {
           userId: String(req.tgUser.id),
           plan,
           fullName,
-          phone
+          username
         })
       });
     })

@@ -289,83 +289,10 @@
     document.getElementById("modal").classList.add("hidden");
   }
 
-  function displayName(user) {
-    if (!user) {
-      return "";
-    }
-
-    return [user.last_name, user.first_name].filter(Boolean).join(" ").trim();
-  }
-
   function openPayme(url) {
     // payme.uz Universal Link "Access denied" / forma beradi.
     // O'z /pay sahifamiz POST qiladi — To'lash cheki chiqadi.
     window.location.assign(url);
-  }
-
-  function askPhone() {
-    if (state.user && state.user.phone) {
-      return Promise.resolve(state.user.phone);
-    }
-
-    if (!tg || typeof tg.requestContact !== "function") {
-      return Promise.resolve("");
-    }
-
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = (value) => {
-        if (done) {
-          return;
-        }
-        done = true;
-        resolve(value || "");
-      };
-
-      const timer = setTimeout(() => finish(""), 25000);
-
-      try {
-        tg.requestContact((shared, extra) => {
-          clearTimeout(timer);
-          const raw =
-            (extra &&
-              extra.responseUnsafe &&
-              extra.responseUnsafe.contact &&
-              extra.responseUnsafe.contact.phone_number) ||
-            (extra && extra.contact && extra.contact.phone_number) ||
-            "";
-
-          if (raw) {
-            finish(raw);
-            return;
-          }
-
-          if (!shared) {
-            finish("");
-            return;
-          }
-
-          (async () => {
-            for (let i = 0; i < 6; i += 1) {
-              await new Promise((wait) => setTimeout(wait, 400));
-              try {
-                await loadMe();
-                if (state.user && state.user.phone) {
-                  finish(state.user.phone);
-                  return;
-                }
-              } catch (error) {
-                /* bot hali saqlamagan bo'lishi mumkin */
-              }
-            }
-            finish("");
-          })();
-        });
-      } catch (error) {
-        clearTimeout(timer);
-        finish("");
-      }
-    });
   }
 
   async function checkout() {
@@ -384,8 +311,9 @@
       return;
     }
 
-    if (!displayName(state.user)) {
-      openModal("Mini ilovani bot orqali qayta oching.");
+    const readyUrl = state.checkoutUrls[plan.id];
+    if (readyUrl) {
+      openPayme(readyUrl);
       return;
     }
 
@@ -399,16 +327,9 @@
     });
 
     try {
-      const phone = await askPhone();
-
-      if (!phone) {
-        openModal("To‘lov uchun Telegram orqali telefon raqamingizni ulashing.");
-        return;
-      }
-
       const data = await api("/api/checkout", {
         method: "POST",
-        body: JSON.stringify({ plan_id: plan.id, phone })
+        body: JSON.stringify({ plan_id: plan.id })
       });
 
       if (!data.url) {
@@ -416,7 +337,6 @@
       }
 
       state.checkoutUrls[plan.id] = data.url;
-      state.user.phone = phone;
       openPayme(data.url);
     } catch (error) {
       const reason = error && error.message ? String(error.message) : "";
@@ -424,8 +344,6 @@
         openModal("Payme hali sozlanmagan. Keyinroq urinib ko‘ring.");
       } else if (reason === "unauthorized") {
         openModal("Mini ilovani bot orqali qayta oching.");
-      } else if (reason === "phone_required") {
-        openModal("To‘lov uchun Telegram orqali telefon raqamingizni ulashing.");
       } else {
         openModal("To‘lovni ochib bo‘lmadi. Qayta urinib ko‘ring.");
       }

@@ -14,31 +14,24 @@ function checkoutAction(config) {
 }
 
 function payerDisplayName(user) {
-  const last = String(user?.last_name || "").trim();
   const first = String(user?.first_name || "").trim();
-  return [last, first].filter(Boolean).join(" ");
+  const last = String(user?.last_name || "").trim();
+  return [first, last].filter(Boolean).join(" ");
 }
 
-function normalizePhone(value) {
-  const digits = String(value || "").replace(/\D/g, "");
-
-  if (digits.length === 9) {
-    return "998" + digits;
-  }
-
-  if (digits.length === 12 && digits.startsWith("998")) {
-    return digits;
-  }
-
-  return "";
+function payerUsername(user) {
+  const raw = String(user?.username || "")
+    .trim()
+    .replace(/^@/, "");
+  return raw ? "@" + raw : "";
 }
 
-function buildPayFormUrl({ config, userId, plan, fullName, phone }) {
+function buildPayFormUrl({ config, userId, plan, fullName, username }) {
   const params = new URLSearchParams({
     a: String(amountTiyin(plan)),
     uid: String(userId),
     n: fullName,
-    p: phone
+    u: username
   });
   const base = config.publicUrl || "";
   return `${base}/pay?${params}`;
@@ -48,12 +41,12 @@ function buildCheckoutUrl(args) {
   return buildPayFormUrl(args);
 }
 
-function payFormPage({ merchant, amount, userId, fullName, phone, callback, action }) {
+function payFormPage({ merchant, amount, userId, fullName, username, callback, action }) {
   const m = escapeHtml(merchant);
   const a = escapeHtml(amount);
   const uid = escapeHtml(userId);
   const name = escapeHtml(fullName);
-  const tel = escapeHtml(phone);
+  const uname = escapeHtml(username);
   const c = escapeHtml(callback);
   const dest = escapeHtml(action);
 
@@ -81,7 +74,7 @@ function payFormPage({ merchant, amount, userId, fullName, phone, callback, acti
       <input type="hidden" name="amount" value="${a}">
       <input type="hidden" name="account[user_id]" value="${uid}">
       <input type="hidden" name="account[full_name]" value="${name}">
-      <input type="hidden" name="account[phone_number]" value="${tel}">
+      <input type="hidden" name="account[username]" value="${uname}">
       <input type="hidden" name="lang" value="uz">
       <input type="hidden" name="callback" value="${c}">
       <input type="hidden" name="callback_timeout" value="15000">
@@ -101,5 +94,5 @@ module.exports = {
   checkoutAction,
   payFormPage,
   payerDisplayName,
-  normalizePhone
+  payerUsername
 };

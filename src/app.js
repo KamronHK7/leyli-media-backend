@@ -5,7 +5,7 @@ const express = require("express");
 const { createPaymeRouter, rpcError, MESSAGES } = require("./payme");
 const { createApiRouter } = require("./api");
 const { runExpiryJob } = require("./jobs");
-const { payFormPage, checkoutAction, normalizePhone } = require("./paymeCheckout");
+const { payFormPage, checkoutAction } = require("./paymeCheckout");
 
 function createApp({ pool, config, notifier, webhookHandler }) {
   const app = express();
@@ -95,7 +95,7 @@ function createApp({ pool, config, notifier, webhookHandler }) {
     const amount = String(req.query.a || "");
     const userId = String(req.query.uid || "");
     const fullName = String(req.query.n || "").trim();
-    const phone = normalizePhone(req.query.p);
+    const username = String(req.query.u || "").trim();
     const merchant = config.paymeMerchantId || "";
     const callback = config.publicUrl ? `${config.publicUrl}/paid` : "";
 
@@ -105,7 +105,7 @@ function createApp({ pool, config, notifier, webhookHandler }) {
       !/^\d{1,20}$/.test(userId) ||
       !fullName ||
       fullName.length > 80 ||
-      !phone
+      username.length > 33
     ) {
       res.status(400).type("html").send("<p>To‘lov parametrlari noto‘g‘ri.</p>");
       return;
@@ -120,7 +120,7 @@ function createApp({ pool, config, notifier, webhookHandler }) {
           amount,
           userId,
           fullName,
-          phone,
+          username,
           callback,
           action: checkoutAction(config)
         })
