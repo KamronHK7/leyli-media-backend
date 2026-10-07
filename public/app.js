@@ -20,6 +20,7 @@
   let state = {
     user: null,
     plans: [],
+    checkoutUrls: {},
     subscription: null,
     selectedPlanId: null,
     supportUrl: "",
@@ -289,22 +290,21 @@
   }
 
   function openPayme(url) {
+    // Telegram WebView ichida Payme ilovasi ochilmaydi — faqat tashqi brauzer.
+    // location.assign qilmaslik kerak: u mini appni checkout sahifasiga olib ketadi.
     if (tg && typeof tg.openLink === "function") {
       try {
         tg.openLink(url, { try_instant_view: false });
+        return;
       } catch (error) {
         try {
           tg.openLink(url);
+          return;
         } catch (inner) {
           window.location.assign(url);
           return;
         }
       }
-
-      window.setTimeout(() => {
-        window.location.assign(url);
-      }, 350);
-      return;
     }
 
     window.location.assign(url);
@@ -323,6 +323,14 @@
           formatSom(plan.price) +
           ". Bot orqali ochilganda shu summa bilan Payme ochiladi."
       );
+      return;
+    }
+
+    const readyUrl = state.checkoutUrls[plan.id];
+
+    // openLink foydalanuvchi bosgan zahoti chaqirilishi kerak (await dan oldin)
+    if (readyUrl) {
+      openPayme(readyUrl);
       return;
     }
 
@@ -345,6 +353,7 @@
         throw new Error("no_checkout_url");
       }
 
+      state.checkoutUrls[plan.id] = data.url;
       openPayme(data.url);
     } catch (error) {
       const reason = error && error.message ? String(error.message) : "";
@@ -410,6 +419,7 @@
     const data = await api("/api/me");
     state.user = data.user;
     state.plans = data.plans;
+    state.checkoutUrls = data.checkout_urls || {};
     state.subscription = data.subscription;
     state.supportUrl = data.support_url || "";
     state.brand = data.brand || state.brand;
@@ -463,7 +473,10 @@
       return;
     }
 
-    if (params.get("paid") === "1") {
+    const paidReturn =
+      params.get("paid") === "1" || location.pathname.replace(/\/+$/, "") === "/paid";
+
+    if (paidReturn) {
       showPage("done");
 
       if (isActive()) {

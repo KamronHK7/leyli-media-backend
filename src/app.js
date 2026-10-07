@@ -77,7 +77,11 @@ function createApp({ pool, config, notifier, webhookHandler }) {
   });
 
   /* Mini app (statik fayllar) */
-  app.use(express.static(path.join(__dirname, "..", "public")));
+  const publicDir = path.join(__dirname, "..", "public");
+  app.use(express.static(publicDir));
+  app.get("/paid", (req, res) => {
+    res.sendFile(path.join(publicDir, "index.html"));
+  });
 
   /* Xatolar: Payme uchun doim RPC formatida, HTTP 200 */
   app.use((err, req, res, next) => {

@@ -21,13 +21,15 @@ function buildCheckoutUrl({ config, userId, plan }) {
   ];
 
   if (config.publicUrl) {
-    parts.push(`c=${config.publicUrl}/?paid=1`);
+    // ?paid=1 base64 ichida "/" hosil qiladi va checkout URL ni ikkiga bo'lib yuboradi
+    parts.push(`c=${config.publicUrl}/paid`);
   }
 
   // Haqiqiy kassa ID test.paycom.uz da topilmaydi — doim production checkout
   const base = "https://checkout.paycom.uz";
+  const token = Buffer.from(parts.join(";")).toString("base64");
 
-  return `${base}/${Buffer.from(parts.join(";")).toString("base64")}`;
+  return `${base}/${encodeURIComponent(token)}`;
 }
 
 function createApiRouter({ pool, config, notifier }) {
@@ -75,17 +77,30 @@ function createApiRouter({ pool, config, notifier }) {
       await upsertUser(pool, req.tgUser);
 
       const subscription = await getSubscription(pool, req.tgUser.id);
+      const userId = String(req.tgUser.id);
+      const checkoutUrls = {};
+
+      if (config.paymeMerchantId) {
+        for (const plan of PLANS) {
+          checkoutUrls[plan.id] = buildCheckoutUrl({
+            config,
+            userId,
+            plan
+          });
+        }
+      }
 
       res.json({
         ok: true,
         user: {
-          id: String(req.tgUser.id),
+          id: userId,
           first_name: req.tgUser.first_name || "",
           last_name: req.tgUser.last_name || "",
           username: req.tgUser.username || "",
           photo_url: req.tgUser.photo_url || ""
         },
         plans: PLANS.map(publicPlan),
+        checkout_urls: checkoutUrls,
         subscription: subscriptionView(subscription),
         payment_ready: Boolean(config.paymeMerchantId),
         support_url: config.supportUrl || "",

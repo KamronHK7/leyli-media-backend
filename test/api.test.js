@@ -4,7 +4,9 @@ const assert = require("node:assert/strict");
 const { createTestEnv, signInitData } = require("./helpers");
 
 test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasaydi", async (t) => {
-  const env = await createTestEnv();
+  const env = await createTestEnv({
+    PUBLIC_URL: "https://leyli-media-backend.onrender.com"
+  });
   t.after(() => env.server.close());
 
   const user = { id: 777, first_name: "Kamron", username: "kamron" };
@@ -34,11 +36,14 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
   body = await res.json();
 
   assert.equal(body.ok, true);
-  const encoded = body.url.split("/").pop();
-  const decoded = Buffer.from(encoded, "base64").toString("utf8");
+  const token = decodeURIComponent(body.url.split("/").pop());
+  assert.equal(token.includes("/"), false);
+  const decoded = Buffer.from(token, "base64").toString("utf8");
   assert.match(decoded, /ac\.user_id=777/);
   assert.match(decoded, /a=2000000/);
   assert.match(decoded, /m=merchant-id/);
+  assert.match(decoded, /\/paid$/);
+  assert.equal(decoded.includes("?"), false);
 
   res = await fetch(`${env.url}/api/checkout`, {
     method: "POST",
