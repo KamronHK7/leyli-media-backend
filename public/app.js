@@ -290,8 +290,9 @@
   }
 
   function openPayme(url) {
-    // Telegram ichida ochilsa Payme «поставщик не найден» qaytaradi.
-    // openLink tashqi Payme ilovasida to'lov oynasini ochadi.
+    // checkout.paycom.uz ni ochmaslik: Payme ilovasi havolani yutib,
+    // to'lov o'rniga bosh sahifa + "request cancelled" chiqadi.
+    // /pay o'z domenimiz — tashqi brauzerda POST qilinadi.
     if (tg && typeof tg.openLink === "function") {
       try {
         tg.openLink(url, { try_instant_view: false });

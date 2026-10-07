@@ -1,34 +1,68 @@
 const { amountTiyin } = require("./config");
 
-function checkoutBase(config) {
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function checkoutAction(config) {
   return config.paymeTestMode ? "https://checkout.test.paycom.uz" : "https://checkout.paycom.uz";
 }
 
-function encodeToken(params) {
-  for (let n = 5000; n < 5300; n += 1) {
-    const token = Buffer.from(`${params};ct=${n}`).toString("base64");
-    if (!token.includes("/") && !token.includes("+")) {
-      return token;
-    }
-  }
-
-  return Buffer.from(params).toString("base64");
-}
-
 function buildCheckoutUrl({ config, userId, plan }) {
-  const parts = [
-    `m=${config.paymeMerchantId}`,
-    `ac.user_id=${userId}`,
-    `a=${amountTiyin(plan)}`,
-    "l=uz"
-  ];
-
-  if (config.publicUrl) {
-    parts.push(`c=${config.publicUrl}/paid`);
-  }
-
-  const token = encodeToken(parts.join(";"));
-  return `${checkoutBase(config)}/${token}`;
+  const params = new URLSearchParams({
+    a: String(amountTiyin(plan)),
+    uid: String(userId)
+  });
+  const base = config.publicUrl || "";
+  return `${base}/pay?${params}`;
 }
 
-module.exports = { buildCheckoutUrl, checkoutBase, encodeToken };
+function payFormPage({ merchant, amount, userId, callback, action }) {
+  const m = escapeHtml(merchant);
+  const a = escapeHtml(amount);
+  const uid = escapeHtml(userId);
+  const c = escapeHtml(callback);
+  const dest = escapeHtml(action);
+
+  return `<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Payme</title>
+  <style>
+    html, body { margin: 0; min-height: 100%; background: #1c1c1e; color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .wrap { min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 24px; text-align: center; gap: 12px; }
+    p { color: #8e8e93; margin: 0; }
+    button { margin-top: 8px; border: 0; border-radius: 12px; padding: 14px 22px;
+      background: #14b8a6; color: #fff; font-size: 16px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <p>Payme to‘lov oynasi ochilmoqda…</p>
+    <form id="payme" method="POST" action="${dest}">
+      <input type="hidden" name="merchant" value="${m}">
+      <input type="hidden" name="amount" value="${a}">
+      <input type="hidden" name="account[user_id]" value="${uid}">
+      <input type="hidden" name="lang" value="uz">
+      <input type="hidden" name="callback" value="${c}">
+      <input type="hidden" name="callback_timeout" value="15000">
+      <input type="hidden" name="description[uz]" value="LEYLI MEDIA">
+      <input type="hidden" name="description[ru]" value="LEYLI MEDIA">
+      <button type="submit">Payme orqali to‘lash</button>
+    </form>
+  </div>
+  <script>document.getElementById("payme").submit();</script>
+</body>
+</html>`;
+}
+
+module.exports = { buildCheckoutUrl, checkoutAction, payFormPage };
