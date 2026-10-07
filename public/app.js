@@ -290,14 +290,19 @@
   }
 
   function openPayme(url) {
-    // payme.uz/fallback/merchant — iOS Payme ilovasini ochadi.
+    // Safari Universal Link Payme ilovasini ochadi; Chrome esa "Request cancelled" ko'rsatadi.
     if (tg && typeof tg.openLink === "function") {
       try {
-        tg.openLink(url, { try_instant_view: false });
+        tg.openLink(url, { try_instant_view: false, try_browser: "safari" });
         return;
       } catch (error) {
-        tg.openLink(url);
-        return;
+        try {
+          tg.openLink(url, { try_instant_view: false });
+          return;
+        } catch (inner) {
+          tg.openLink(url);
+          return;
+        }
       }
     }
 

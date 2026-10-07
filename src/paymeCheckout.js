@@ -22,12 +22,17 @@ function buildPayFormUrl({ config, userId, plan }) {
   return `${base}/pay?${params}`;
 }
 
+const PAYER_NAME = "LEYLI MEDIA";
+const PAYER_PHONE = "998900000000";
+
 function buildCheckoutUrl({ config, userId, plan }) {
   if (config.paymeFallbackId) {
     const params = new URLSearchParams({
       id: config.paymeFallbackId,
       amount: String(amountTiyin(plan)),
-      user_id: String(userId)
+      user_id: String(userId),
+      full_name: PAYER_NAME,
+      phone_number: PAYER_PHONE
     });
     return `https://payme.uz/fallback/merchant/?${params}`;
   }
@@ -65,8 +70,8 @@ function payFormPage({ merchant, amount, userId, callback, action }) {
       <input type="hidden" name="merchant" value="${m}">
       <input type="hidden" name="amount" value="${a}">
       <input type="hidden" name="account[user_id]" value="${uid}">
-      <input type="hidden" name="account[full_name]" value="LEYLI MEDIA">
-      <input type="hidden" name="account[phone_number]" value="998900000000">
+      <input type="hidden" name="account[full_name]" value="${escapeHtml(PAYER_NAME)}">
+      <input type="hidden" name="account[phone_number]" value="${escapeHtml(PAYER_PHONE)}">
       <input type="hidden" name="lang" value="uz">
       <input type="hidden" name="callback" value="${c}">
       <input type="hidden" name="callback_timeout" value="15000">
