@@ -22,18 +22,6 @@ function buildCheckoutUrl({ config, userId, plan }) {
   return `${base}/pay?${params}`;
 }
 
-function buildCheckoutGetUrl({ config, userId, plan }) {
-  const host = checkoutAction(config);
-  const payload = [
-    `m=${config.paymeMerchantId}`,
-    `ac.user_id=${userId}`,
-    `a=${amountTiyin(plan)}`,
-    "l=uz"
-  ].join(";");
-  const token = Buffer.from(payload, "utf8").toString("base64");
-  return `${host}/${token}`;
-}
-
 function payFormPage({ merchant, amount, userId, callback, action }) {
   const m = escapeHtml(merchant);
   const a = escapeHtml(amount);
@@ -79,4 +67,4 @@ function payFormPage({ merchant, amount, userId, callback, action }) {
 </html>`;
 }
 
-module.exports = { buildCheckoutUrl, buildCheckoutGetUrl, checkoutAction, payFormPage };
+module.exports = { buildCheckoutUrl, checkoutAction, payFormPage };

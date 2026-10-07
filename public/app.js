@@ -290,7 +290,8 @@
   }
 
   function openPayme(url) {
-    // checkout.paycom.uz GET — iOS Universal Link Payme ilovasini ochadi.
+    // /pay o'z domenimiz: POST checkout.paycom.uz ga ketadi.
+    // GET token ni Payme ilovasi yutib, bosh sahifada qoldiradi.
     if (tg && typeof tg.openLink === "function") {
       try {
         tg.openLink(url, { try_instant_view: false });
