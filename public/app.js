@@ -290,8 +290,17 @@
   }
 
   function openPayme(url) {
-    // payme.uz Universal Link "Access denied" / forma beradi.
-    // O'z /pay sahifamiz POST qiladi — To'lash cheki chiqadi.
+    // Payme GET checkout: checkout.paycom.uz/{base64} — ilovada to'lov sahifasi.
+    if (tg && typeof tg.openLink === "function") {
+      try {
+        tg.openLink(url, { try_instant_view: false });
+        return;
+      } catch (error) {
+        tg.openLink(url);
+        return;
+      }
+    }
+
     window.location.assign(url);
   }
 

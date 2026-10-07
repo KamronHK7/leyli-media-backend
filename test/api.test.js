@@ -2,6 +2,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 
 const { createTestEnv, signInitData } = require("./helpers");
+const { decodeCheckoutToken } = require("../src/paymeCheckout");
 
 test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasaydi", async (t) => {
   const env = await createTestEnv({
@@ -41,13 +42,15 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
   body = await res.json();
 
   assert.equal(body.ok, true);
-  assert.match(body.url, /^https:\/\/leyli-media-backend\.onrender\.com\/pay\?/);
-  assert.match(body.url, /[?&]a=2000000(?:&|$)/);
-  assert.match(body.url, /[?&]uid=777(?:&|$)/);
-  assert.match(body.url, /[?&]n=Kamronbek(\+|%20)Xoliqov/);
-  assert.match(body.url, /[?&]u=%40kamron(?:&|$)/);
+  assert.match(body.url, /^https:\/\/checkout\.paycom\.uz\//);
+  const decoded = decodeCheckoutToken(body.url);
+  assert.match(decoded, /(?:^|;)m=merchant-id(?:;|$)/);
+  assert.match(decoded, /(?:^|;)ac\.user_id=777(?:;|$)/);
+  assert.match(decoded, /(?:^|;)ac\.full_name=Kamronbek Xoliqov(?:;|$)/);
+  assert.match(decoded, /(?:^|;)ac\.username=@kamron(?:;|$)/);
+  assert.match(decoded, /(?:^|;)a=2000000(?:;|$)/);
+  assert.equal(decoded.includes("?"), false);
   assert.equal(body.url.includes("payme.uz/fallback"), false);
-  assert.equal(body.url.includes("checkout.paycom.uz"), false);
 
   res = await fetch(
     `${env.url}/pay?a=2000000&uid=777&n=Kamronbek%20Xoliqov&u=%40kamron`
@@ -71,7 +74,7 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
     body: JSON.stringify({ plan_id: "month_6" })
   });
   body = await res.json();
-  assert.match(body.url, /[?&]a=10900000(?:&|$)/);
+  assert.match(decodeCheckoutToken(body.url), /(?:^|;)a=10900000(?:;|$)/);
 
   res = await fetch(`${env.url}/payme`);
   assert.equal(res.status, 200);

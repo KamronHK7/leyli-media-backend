@@ -26,6 +26,8 @@ function payerUsername(user) {
   return raw ? "@" + raw : "";
 }
 
+const KASSA_PHONE = "998900000000";
+
 function buildPayFormUrl({ config, userId, plan, fullName, username }) {
   const params = new URLSearchParams({
     a: String(amountTiyin(plan)),
@@ -37,11 +39,39 @@ function buildPayFormUrl({ config, userId, plan, fullName, username }) {
   return `${base}/pay?${params}`;
 }
 
-function buildCheckoutUrl(args) {
-  return buildPayFormUrl(args);
+function encodeCheckoutToken(payload) {
+  const token = Buffer.from(payload, "utf8").toString("base64");
+  return token.includes("/") || token.includes("+") ? encodeURIComponent(token) : token;
 }
 
-const KASSA_PHONE = "998900000000";
+function decodeCheckoutToken(url) {
+  const token = decodeURIComponent(String(url).split("/").pop() || "");
+  return Buffer.from(token, "base64").toString("utf8");
+}
+
+function buildCheckoutUrl({ config, userId, plan, fullName, username }) {
+  const parts = [
+    `m=${config.paymeMerchantId}`,
+    `ac.user_id=${userId}`,
+    `ac.full_name=${fullName}`
+  ];
+
+  if (username) {
+    parts.push(`ac.username=${username}`);
+  }
+
+  parts.push(
+    `ac.phone_number=${KASSA_PHONE}`,
+    `a=${amountTiyin(plan)}`,
+    "l=uz"
+  );
+
+  if (config.publicUrl) {
+    parts.push(`c=${config.publicUrl}/paid`, "ct=15000");
+  }
+
+  return `${checkoutAction(config)}/${encodeCheckoutToken(parts.join(";"))}`;
+}
 
 function payFormPage({ merchant, amount, userId, fullName, username, callback, action }) {
   const m = escapeHtml(merchant);
@@ -98,5 +128,6 @@ module.exports = {
   checkoutAction,
   payFormPage,
   payerDisplayName,
-  payerUsername
+  payerUsername,
+  decodeCheckoutToken
 };
