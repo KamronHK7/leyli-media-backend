@@ -136,4 +136,31 @@ test("Payme Merchant API sandbox ssenariylari", async (t) => {
     r.body.result.transactions.some((t) => t.id === "old-timeout"),
     false
   );
+
+  const sandboxHeaders = { "Test-Operation": "Paycom" };
+  const sandboxAuth = paymeAuth("Paycom", "sandbox_key_value");
+  r = await rpc(
+    sandbox.url,
+    "ChangePassword",
+    { password: "new_sandbox_key" },
+    sandboxAuth,
+    sandboxHeaders
+  );
+  assert.equal(r.body.result.success, true);
+  r = await rpc(
+    sandbox.url,
+    "CheckPerformTransaction",
+    { amount, account },
+    sandboxAuth,
+    sandboxHeaders
+  );
+  assert.equal(r.body.error.code, -32504);
+  r = await rpc(
+    sandbox.url,
+    "CheckPerformTransaction",
+    { amount, account },
+    paymeAuth("Paycom", "new_sandbox_key"),
+    sandboxHeaders
+  );
+  assert.equal(r.body.result.allow, true);
 });

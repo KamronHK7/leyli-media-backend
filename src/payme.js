@@ -54,6 +54,11 @@ const MESSAGES = {
     uz: "Tizim xatosi",
     ru: "Системная ошибка",
     en: "System error"
+  },
+  cannotChangePassword: {
+    uz: "Parolni o'zgartirib bo'lmadi",
+    ru: "Не удалось изменить пароль",
+    en: "Cannot change the password"
   }
 };
 
@@ -117,6 +122,10 @@ function getTelegramUserId(account) {
 */
 function createPaymeRouter({ pool, config, hooks = {} }) {
   const router = express.Router();
+  const liveKeys = {
+    sandbox: config.paymeTestKey || config.paymeKey,
+    production: config.paymeKey
+  };
 
   function checkAuth(req, res, next) {
     const reject = () =>
@@ -124,9 +133,7 @@ function createPaymeRouter({ pool, config, hooks = {} }) {
 
     const isSandbox =
       String(req.headers["test-operation"] || "").toLowerCase() === "paycom";
-    const expectedKey = isSandbox
-      ? config.paymeTestKey || config.paymeKey
-      : config.paymeKey;
+    const expectedKey = isSandbox ? liveKeys.sandbox : liveKeys.production;
 
     if (!config.paymeLogin || !expectedKey) {
       console.error("❌ PAYME_LOGIN yoki PAYME_KEY o'rnatilmagan");
@@ -529,6 +536,24 @@ function createPaymeRouter({ pool, config, hooks = {} }) {
             reason: toReason(t.reason)
           }))
         });
+      }
+
+      /* ChangePassword */
+      if (method === "ChangePassword") {
+        const nextPassword = String(params?.password || "");
+        const currentKey = req.paymeSandbox ? liveKeys.sandbox : liveKeys.production;
+
+        if (!nextPassword || nextPassword === currentKey) {
+          return rpcError(res, id, -32400, MESSAGES.cannotChangePassword, "password");
+        }
+
+        if (req.paymeSandbox) {
+          liveKeys.sandbox = nextPassword;
+        } else {
+          liveKeys.production = nextPassword;
+        }
+
+        return rpcResult(res, id, { success: true });
       }
 
       return rpcError(res, id, -32601, MESSAGES.methodNotFound);
