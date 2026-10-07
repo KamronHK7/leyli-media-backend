@@ -13,37 +13,47 @@ function checkoutAction(config) {
   return config.paymeTestMode ? "https://test.paycom.uz" : "https://checkout.paycom.uz";
 }
 
-function buildPayFormUrl({ config, userId, plan }) {
+function payerDisplayName(user) {
+  const last = String(user?.last_name || "").trim();
+  const first = String(user?.first_name || "").trim();
+  return [last, first].filter(Boolean).join(" ");
+}
+
+function normalizePhone(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+
+  if (digits.length === 9) {
+    return "998" + digits;
+  }
+
+  if (digits.length === 12 && digits.startsWith("998")) {
+    return digits;
+  }
+
+  return "";
+}
+
+function buildPayFormUrl({ config, userId, plan, fullName, phone }) {
   const params = new URLSearchParams({
     a: String(amountTiyin(plan)),
-    uid: String(userId)
+    uid: String(userId),
+    n: fullName,
+    p: phone
   });
   const base = config.publicUrl || "";
   return `${base}/pay?${params}`;
 }
 
-const PAYER_NAME = "LEYLI MEDIA";
-const PAYER_PHONE = "998900000000";
-
-function buildCheckoutUrl({ config, userId, plan }) {
-  if (config.paymeFallbackId) {
-    const params = new URLSearchParams({
-      id: config.paymeFallbackId,
-      amount: String(amountTiyin(plan)),
-      user_id: String(userId),
-      full_name: PAYER_NAME,
-      phone_number: PAYER_PHONE
-    });
-    return `https://payme.uz/fallback/merchant/?${params}`;
-  }
-
-  return buildPayFormUrl({ config, userId, plan });
+function buildCheckoutUrl(args) {
+  return buildPayFormUrl(args);
 }
 
-function payFormPage({ merchant, amount, userId, callback, action }) {
+function payFormPage({ merchant, amount, userId, fullName, phone, callback, action }) {
   const m = escapeHtml(merchant);
   const a = escapeHtml(amount);
   const uid = escapeHtml(userId);
+  const name = escapeHtml(fullName);
+  const tel = escapeHtml(phone);
   const c = escapeHtml(callback);
   const dest = escapeHtml(action);
 
@@ -70,8 +80,8 @@ function payFormPage({ merchant, amount, userId, callback, action }) {
       <input type="hidden" name="merchant" value="${m}">
       <input type="hidden" name="amount" value="${a}">
       <input type="hidden" name="account[user_id]" value="${uid}">
-      <input type="hidden" name="account[full_name]" value="${escapeHtml(PAYER_NAME)}">
-      <input type="hidden" name="account[phone_number]" value="${escapeHtml(PAYER_PHONE)}">
+      <input type="hidden" name="account[full_name]" value="${name}">
+      <input type="hidden" name="account[phone_number]" value="${tel}">
       <input type="hidden" name="lang" value="uz">
       <input type="hidden" name="callback" value="${c}">
       <input type="hidden" name="callback_timeout" value="15000">
@@ -85,4 +95,11 @@ function payFormPage({ merchant, amount, userId, callback, action }) {
 </html>`;
 }
 
-module.exports = { buildCheckoutUrl, buildPayFormUrl, checkoutAction, payFormPage };
+module.exports = {
+  buildCheckoutUrl,
+  buildPayFormUrl,
+  checkoutAction,
+  payFormPage,
+  payerDisplayName,
+  normalizePhone
+};

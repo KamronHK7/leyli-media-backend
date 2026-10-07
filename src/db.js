@@ -17,6 +17,7 @@ async function initDatabase(pool, config) {
       username TEXT,
       first_name TEXT,
       last_name TEXT,
+      phone TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
@@ -45,6 +46,11 @@ async function initDatabase(pool, config) {
   await pool.query(`
     ALTER TABLE payme_transactions
     ADD COLUMN IF NOT EXISTS plan_id TEXT
+  `);
+
+  await pool.query(`
+    ALTER TABLE telegram_users
+    ADD COLUMN IF NOT EXISTS phone TEXT
   `);
 
   await pool.query(`
@@ -89,23 +95,34 @@ async function upsertUser(pool, user) {
   await pool.query(
     `
       INSERT INTO telegram_users
-        (telegram_user_id, username, first_name, last_name, updated_at)
+        (telegram_user_id, username, first_name, last_name, phone, updated_at)
       VALUES
-        ($1, $2, $3, $4, NOW())
+        ($1, $2, $3, $4, $5, NOW())
       ON CONFLICT (telegram_user_id)
       DO UPDATE SET
         username = EXCLUDED.username,
         first_name = EXCLUDED.first_name,
         last_name = EXCLUDED.last_name,
+        phone = COALESCE(EXCLUDED.phone, telegram_users.phone),
         updated_at = NOW()
     `,
     [
       String(user.id),
       user.username || null,
       user.first_name || null,
-      user.last_name || null
+      user.last_name || null,
+      user.phone || null
     ]
   );
 }
 
-module.exports = { createPool, initDatabase, upsertUser };
+async function getUserPhone(pool, telegramUserId) {
+  const result = await pool.query(
+    `SELECT phone FROM telegram_users WHERE telegram_user_id = $1 LIMIT 1`,
+    [String(telegramUserId)]
+  );
+
+  return result.rows[0]?.phone || "";
+}
+
+module.exports = { createPool, initDatabase, upsertUser, getUserPhone };

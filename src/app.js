@@ -5,7 +5,7 @@ const express = require("express");
 const { createPaymeRouter, rpcError, MESSAGES } = require("./payme");
 const { createApiRouter } = require("./api");
 const { runExpiryJob } = require("./jobs");
-const { payFormPage, checkoutAction } = require("./paymeCheckout");
+const { payFormPage, checkoutAction, normalizePhone } = require("./paymeCheckout");
 
 function createApp({ pool, config, notifier, webhookHandler }) {
   const app = express();
@@ -86,18 +86,27 @@ function createApp({ pool, config, notifier, webhookHandler }) {
   });
 
   /*
-    checkout.paycom.uz/{token} ni to'g'ridan-to'g'ri ochish Payme ilovasini
-    bosh sahifaga olib ketadi (Universal Links) va Telegram "request cancelled"
-    ko'rsatadi. Avval o'z /pay sahifamiz ochiladi, u POST ni path "/" ga
-    yuboradi — ilova ushlamaydi, to'lov formasi chiqadi.
+    payme.uz/fallback/merchant — merchant forma (FISH/Oldinga) va iOS
+    "Access denied" xatosini beradi. checkout.paycom.uz GET esa ilovani
+    bosh sahifaga olib ketadi. O'z /pay sahifamiz POST qiladi: Payme
+    to'g'ridan-to'g'ri To'lash chekini ochadi.
   */
   app.get("/pay", (req, res) => {
     const amount = String(req.query.a || "");
     const userId = String(req.query.uid || "");
+    const fullName = String(req.query.n || "").trim();
+    const phone = normalizePhone(req.query.p);
     const merchant = config.paymeMerchantId || "";
     const callback = config.publicUrl ? `${config.publicUrl}/paid` : "";
 
-    if (!merchant || !/^\d{3,12}$/.test(amount) || !/^\d{1,20}$/.test(userId)) {
+    if (
+      !merchant ||
+      !/^\d{3,12}$/.test(amount) ||
+      !/^\d{1,20}$/.test(userId) ||
+      !fullName ||
+      fullName.length > 80 ||
+      !phone
+    ) {
       res.status(400).type("html").send("<p>To‘lov parametrlari noto‘g‘ri.</p>");
       return;
     }
@@ -110,6 +119,8 @@ function createApp({ pool, config, notifier, webhookHandler }) {
           merchant,
           amount,
           userId,
+          fullName,
+          phone,
           callback,
           action: checkoutAction(config)
         })

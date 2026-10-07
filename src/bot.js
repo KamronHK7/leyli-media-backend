@@ -247,7 +247,19 @@ function createTelegram({ pool, config }) {
     await notifier.sendAccessLink(ctx.from.id, subscription.expires_at);
   });
 
+  bot.on("message:contact", async (ctx) => {
+    const contact = ctx.message.contact;
+
+    if (contact && String(contact.user_id) === String(ctx.from.id) && contact.phone_number) {
+      await upsertUser(pool, { ...ctx.from, phone: contact.phone_number });
+    }
+  });
+
   bot.on("message", async (ctx) => {
+    if (ctx.message.contact) {
+      return;
+    }
+
     await ctx.reply("Quyidagi tugmalardan foydalaning 👇", {
       reply_markup: mainKeyboard()
     });

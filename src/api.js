@@ -1,10 +1,10 @@
 const express = require("express");
 
 const { validateInitData } = require("./telegramAuth");
-const { upsertUser } = require("./db");
+const { upsertUser, getUserPhone } = require("./db");
 const { PLANS, publicPlan, getPlanById } = require("./config");
 const { getSubscription, isActive } = require("./subscriptions");
-const { buildCheckoutUrl } = require("./paymeCheckout");
+const { buildCheckoutUrl, payerDisplayName, normalizePhone } = require("./paymeCheckout");
 
 const LINK_COOLDOWN_MS = 20 * 1000;
 
@@ -54,14 +54,18 @@ function createApiRouter({ pool, config, notifier }) {
 
       const subscription = await getSubscription(pool, req.tgUser.id);
       const userId = String(req.tgUser.id);
+      const phone = await getUserPhone(pool, userId);
+      const fullName = payerDisplayName(req.tgUser);
       const checkoutUrls = {};
 
-      if (config.paymeMerchantId) {
+      if (config.paymeMerchantId && fullName && phone) {
         for (const plan of PLANS) {
           checkoutUrls[plan.id] = buildCheckoutUrl({
             config,
             userId,
-            plan
+            plan,
+            fullName,
+            phone
           });
         }
       }
@@ -73,7 +77,8 @@ function createApiRouter({ pool, config, notifier }) {
           first_name: req.tgUser.first_name || "",
           last_name: req.tgUser.last_name || "",
           username: req.tgUser.username || "",
-          photo_url: req.tgUser.photo_url || ""
+          photo_url: req.tgUser.photo_url || "",
+          phone
         },
         plans: PLANS.map(publicPlan),
         checkout_urls: checkoutUrls,
@@ -103,15 +108,23 @@ function createApiRouter({ pool, config, notifier }) {
         return res.status(400).json({ ok: false, error: "invalid_plan" });
       }
 
-      // Payme CheckPerformTransaction foydalanuvchini bazadan qidiradi
-      await upsertUser(pool, req.tgUser);
+      const phone = normalizePhone(req.body?.phone) || (await getUserPhone(pool, req.tgUser.id));
+      const fullName = payerDisplayName(req.tgUser);
+
+      if (!fullName || !phone) {
+        return res.status(400).json({ ok: false, error: "phone_required" });
+      }
+
+      await upsertUser(pool, { ...req.tgUser, phone });
 
       res.json({
         ok: true,
         url: buildCheckoutUrl({
           config,
           userId: String(req.tgUser.id),
-          plan
+          plan,
+          fullName,
+          phone
         })
       });
     })

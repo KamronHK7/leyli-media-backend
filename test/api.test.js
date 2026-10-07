@@ -9,7 +9,12 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
   });
   t.after(() => env.server.close());
 
-  const user = { id: 777, first_name: "Kamron", username: "kamron" };
+  const user = {
+    id: 777,
+    first_name: "Kamronbek",
+    last_name: "Xoliqov",
+    username: "kamron"
+  };
   const initData = signInitData(env.config.botToken, user, Math.floor(Date.now() / 1000));
 
   let res = await fetch(`${env.url}/api/me`, {
@@ -31,25 +36,29 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
       Authorization: "tma " + initData,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ plan_id: "month_1" })
+    body: JSON.stringify({ plan_id: "month_1", phone: "998885487727" })
   });
   body = await res.json();
 
   assert.equal(body.ok, true);
-  assert.match(body.url, /^https:\/\/payme\.uz\/fallback\/merchant\/\?/);
-  assert.match(body.url, /[?&]id=fallback-id(?:&|$)/);
-  assert.match(body.url, /[?&]amount=2000000(?:&|$)/);
-  assert.match(body.url, /[?&]user_id=777(?:&|$)/);
-  assert.match(body.url, /[?&]full_name=LEYLI(\+|%20)MEDIA/);
-  assert.match(body.url, /[?&]phone_number=998900000000(?:&|$)/);
+  assert.match(body.url, /^https:\/\/leyli-media-backend\.onrender\.com\/pay\?/);
+  assert.match(body.url, /[?&]a=2000000(?:&|$)/);
+  assert.match(body.url, /[?&]uid=777(?:&|$)/);
+  assert.match(body.url, /[?&]n=Xoliqov(\+|%20)Kamronbek/);
+  assert.match(body.url, /[?&]p=998885487727(?:&|$)/);
+  assert.equal(body.url.includes("payme.uz/fallback"), false);
   assert.equal(body.url.includes("checkout.paycom.uz"), false);
 
-  res = await fetch(`${env.url}/pay?a=2000000&uid=777`);
+  res = await fetch(
+    `${env.url}/pay?a=2000000&uid=777&n=Xoliqov%20Kamronbek&p=998885487727`
+  );
   assert.equal(res.status, 200);
   const html = await res.text();
   assert.match(html, /name="merchant" value="merchant-id"/);
   assert.match(html, /name="amount" value="2000000"/);
   assert.match(html, /name="account\[user_id\]" value="777"/);
+  assert.match(html, /name="account\[full_name\]" value="Xoliqov Kamronbek"/);
+  assert.match(html, /name="account\[phone_number\]" value="998885487727"/);
   assert.match(html, /action="https:\/\/checkout\.paycom\.uz"/);
 
   res = await fetch(`${env.url}/api/checkout`, {
@@ -61,7 +70,7 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
     body: JSON.stringify({ plan_id: "month_6" })
   });
   body = await res.json();
-  assert.match(body.url, /[?&]amount=10900000(?:&|$)/);
+  assert.match(body.url, /[?&]a=10900000(?:&|$)/);
 
   res = await fetch(`${env.url}/payme`);
   assert.equal(res.status, 200);
