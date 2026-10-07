@@ -288,9 +288,32 @@
     document.getElementById("modal").classList.add("hidden");
   }
 
+  function openPayme(url) {
+    if (tg && typeof tg.openLink === "function") {
+      try {
+        tg.openLink(url, { try_instant_view: false });
+      } catch (error) {
+        try {
+          tg.openLink(url);
+        } catch (inner) {
+          window.location.assign(url);
+          return;
+        }
+      }
+
+      window.setTimeout(() => {
+        window.location.assign(url);
+      }, 350);
+      return;
+    }
+
+    window.location.assign(url);
+  }
+
   async function checkout() {
     const plan = selectedPlan();
     if (!plan) {
+      openModal("Avval to‘lov summasini tanlang.");
       return;
     }
 
@@ -303,9 +326,11 @@
       return;
     }
 
-    const buttons = [document.getElementById("pay-next"), document.getElementById("buy-btn")].filter(
-      Boolean
-    );
+    const buttons = [
+      document.getElementById("pay-next"),
+      document.getElementById("payme-btn"),
+      document.getElementById("buy-btn")
+    ].filter(Boolean);
     buttons.forEach((btn) => {
       btn.disabled = true;
     });
@@ -316,13 +341,20 @@
         body: JSON.stringify({ plan_id: plan.id })
       });
 
-      if (tg && tg.openLink) {
-        tg.openLink(data.url);
-      } else {
-        window.location.href = data.url;
+      if (!data.url) {
+        throw new Error("no_checkout_url");
       }
+
+      openPayme(data.url);
     } catch (error) {
-      openModal("To‘lovni ochib bo‘lmadi. Qayta urinib ko‘ring.");
+      const reason = error && error.message ? String(error.message) : "";
+      if (reason === "payment_not_configured") {
+        openModal("Payme hali sozlanmagan. Keyinroq urinib ko‘ring.");
+      } else if (reason === "unauthorized") {
+        openModal("Mini ilovani bot orqali qayta oching.");
+      } else {
+        openModal("To‘lovni ochib bo‘lmadi. Qayta urinib ko‘ring.");
+      }
     } finally {
       buttons.forEach((btn) => {
         btn.disabled = false;
@@ -457,6 +489,10 @@
     showPage("pay");
   });
   document.getElementById("pay-next").addEventListener("click", () => {
+    haptic("medium");
+    checkout();
+  });
+  document.getElementById("payme-btn").addEventListener("click", () => {
     haptic("medium");
     checkout();
   });

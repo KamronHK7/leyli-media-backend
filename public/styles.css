@@ -375,8 +375,14 @@ h1 {
   border: 1.5px solid #5b9cff;
   border-radius: 16px;
   background: #ffffff;
+  cursor: pointer;
   animation: edgeShift 5s linear infinite;
   animation-delay: -3s;
+}
+
+.method:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .method-payme {
