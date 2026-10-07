@@ -26,8 +26,6 @@ function payerUsername(user) {
   return raw ? "@" + raw : "";
 }
 
-const KASSA_PHONE = "998900000000";
-
 function buildPayFormUrl({ config, userId, plan, fullName, username }) {
   const params = new URLSearchParams({
     a: String(amountTiyin(plan)),
@@ -58,13 +56,10 @@ function buildCheckoutUrl({ config, userId, plan, fullName, username }) {
 
   if (username) {
     parts.push(`ac.username=${username}`);
+    parts.push(`ac.phone_number=${username}`);
   }
 
-  parts.push(
-    `ac.phone_number=${KASSA_PHONE}`,
-    `a=${amountTiyin(plan)}`,
-    "l=uz"
-  );
+  parts.push(`a=${amountTiyin(plan)}`, "l=uz");
 
   if (config.publicUrl) {
     parts.push(`c=${config.publicUrl}/paid`, "ct=15000");
@@ -108,7 +103,7 @@ function payFormPage({ merchant, amount, userId, fullName, username, callback, a
       <input type="hidden" name="account[user_id]" value="${uid}">
       <input type="hidden" name="account[full_name]" value="${name}">
       <input type="hidden" name="account[username]" value="${uname}">
-      <input type="hidden" name="account[phone_number]" value="${KASSA_PHONE}">
+      <input type="hidden" name="account[phone_number]" value="${uname}">
       <input type="hidden" name="lang" value="uz">
       <input type="hidden" name="callback" value="${c}">
       <input type="hidden" name="callback_timeout" value="15000">

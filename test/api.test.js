@@ -48,6 +48,8 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
   assert.match(decoded, /(?:^|;)ac\.user_id=777(?:;|$)/);
   assert.match(decoded, /(?:^|;)ac\.full_name=Kamronbek Xoliqov(?:;|$)/);
   assert.match(decoded, /(?:^|;)ac\.username=@kamron(?:;|$)/);
+  assert.match(decoded, /(?:^|;)ac\.phone_number=@kamron(?:;|$)/);
+  assert.equal(decoded.includes("998900000000"), false);
   assert.match(decoded, /(?:^|;)a=2000000(?:;|$)/);
   assert.equal(decoded.includes("?"), false);
   assert.equal(body.url.includes("payme.uz/fallback"), false);
@@ -62,7 +64,8 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
   assert.match(html, /name="account\[user_id\]" value="777"/);
   assert.match(html, /name="account\[full_name\]" value="Kamronbek Xoliqov"/);
   assert.match(html, /name="account\[username\]" value="@kamron"/);
-  assert.match(html, /name="account\[phone_number\]"/);
+  assert.match(html, /name="account\[phone_number\]" value="@kamron"/);
+  assert.equal(html.includes("998900000000"), false);
   assert.match(html, /action="https:\/\/checkout\.paycom\.uz"/);
 
   res = await fetch(`${env.url}/api/checkout`, {
