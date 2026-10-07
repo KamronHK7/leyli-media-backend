@@ -6,7 +6,10 @@ const { DAY_MS, getSubscription, isActive, grantSubscription } = require("./subs
   kelmagan to'lovlar. Server ishga tushganda bir marta tiklanadi.
   Faol obuna bo'lsa, qayta qo'shilmaydi.
 */
-const MISSED_PAYMENTS = [{ userId: "2096644395", planId: "month_1" }];
+const MISSED_PAYMENTS = [
+  { userId: "2096644395", planId: "month_1", firstName: "asaradarachukara" },
+  { userId: "6336262541", planId: "month_1", firstName: "Usmonkhodja" }
+];
 
 async function recoverMissedPayments({ pool, notifier }) {
   const summary = { granted: 0, skipped: 0, errors: 0 };
@@ -29,10 +32,10 @@ async function recoverMissedPayments({ pool, notifier }) {
       await pool.query(
         `
           INSERT INTO telegram_users (telegram_user_id, first_name)
-          VALUES ($1, 'mijoz')
+          VALUES ($1, $2)
           ON CONFLICT (telegram_user_id) DO NOTHING
         `,
-        [item.userId]
+        [item.userId, item.firstName || "mijoz"]
       );
 
       const expiresAt = await grantSubscription(pool, item.userId, plan);
