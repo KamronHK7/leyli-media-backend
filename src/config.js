@@ -79,6 +79,8 @@ function loadConfig(env = process.env) {
     paymeKey: env.PAYME_KEY || "",
     paymeTestKey: env.PAYME_TEST_KEY || "",
     paymeMerchantId: env.PAYME_MERCHANT_ID || "",
+    // payme.uz/fallback/merchant — iOS ilovasini to'lov bilan ochadi
+    paymeFallbackId: env.PAYME_FALLBACK_ID || "6ab52a1ca2b2e89ee143b4ca",
     paymeTestMode: env.PAYME_TEST_MODE === "true",
     // Kassa production'da yoqilgach: PAYME_TEST_MODE=production
     paymeUseProdCheckout:

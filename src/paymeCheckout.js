@@ -13,13 +13,26 @@ function checkoutAction(config) {
   return config.paymeTestMode ? "https://test.paycom.uz" : "https://checkout.paycom.uz";
 }
 
-function buildCheckoutUrl({ config, userId, plan }) {
+function buildPayFormUrl({ config, userId, plan }) {
   const params = new URLSearchParams({
     a: String(amountTiyin(plan)),
     uid: String(userId)
   });
   const base = config.publicUrl || "";
   return `${base}/pay?${params}`;
+}
+
+function buildCheckoutUrl({ config, userId, plan }) {
+  if (config.paymeFallbackId) {
+    const params = new URLSearchParams({
+      id: config.paymeFallbackId,
+      amount: String(amountTiyin(plan)),
+      user_id: String(userId)
+    });
+    return `https://payme.uz/fallback/merchant/?${params}`;
+  }
+
+  return buildPayFormUrl({ config, userId, plan });
 }
 
 function payFormPage({ merchant, amount, userId, callback, action }) {
@@ -67,4 +80,4 @@ function payFormPage({ merchant, amount, userId, callback, action }) {
 </html>`;
 }
 
-module.exports = { buildCheckoutUrl, checkoutAction, payFormPage };
+module.exports = { buildCheckoutUrl, buildPayFormUrl, checkoutAction, payFormPage };

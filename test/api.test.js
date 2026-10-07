@@ -36,13 +36,13 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
   body = await res.json();
 
   assert.equal(body.ok, true);
-  assert.match(body.url, /\/pay\?/);
-  assert.match(body.url, /[?&]a=2000000(?:&|$)/);
-  assert.match(body.url, /[?&]uid=777(?:&|$)/);
+  assert.match(body.url, /^https:\/\/payme\.uz\/fallback\/merchant\/\?/);
+  assert.match(body.url, /[?&]id=fallback-id(?:&|$)/);
+  assert.match(body.url, /[?&]amount=2000000(?:&|$)/);
+  assert.match(body.url, /[?&]user_id=777(?:&|$)/);
   assert.equal(body.url.includes("checkout.paycom.uz"), false);
 
-  const payPath = body.url.slice(body.url.indexOf("/pay?"));
-  res = await fetch(`${env.url}${payPath}`);
+  res = await fetch(`${env.url}/pay?a=2000000&uid=777`);
   assert.equal(res.status, 200);
   const html = await res.text();
   assert.match(html, /name="merchant" value="merchant-id"/);
@@ -59,7 +59,7 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
     body: JSON.stringify({ plan_id: "month_6" })
   });
   body = await res.json();
-  assert.match(body.url, /[?&]a=10900000(?:&|$)/);
+  assert.match(body.url, /[?&]amount=10900000(?:&|$)/);
 
   res = await fetch(`${env.url}/payme`);
   assert.equal(res.status, 200);

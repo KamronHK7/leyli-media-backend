@@ -40,6 +40,7 @@ async function createTestEnv(overrides = {}) {
     PAYME_LOGIN: "Paycom",
     PAYME_KEY: "test_key",
     PAYME_MERCHANT_ID: "merchant-id",
+    PAYME_FALLBACK_ID: "fallback-id",
     PAYME_TEST_USER_ID: "12345",
     BOT_TOKEN: "123:ABC",
     CRON_SECRET: "cron-secret",
