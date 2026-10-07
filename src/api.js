@@ -24,9 +24,8 @@ function buildCheckoutUrl({ config, userId, plan }) {
     parts.push(`c=${config.publicUrl}/?paid=1`);
   }
 
-  const base = config.paymeTestMode
-    ? "https://checkout.test.paycom.uz"
-    : "https://checkout.paycom.uz";
+  // Haqiqiy kassa ID test.paycom.uz da topilmaydi — doim production checkout
+  const base = "https://checkout.paycom.uz";
 
   return `${base}/${Buffer.from(parts.join(";")).toString("base64")}`;
 }
