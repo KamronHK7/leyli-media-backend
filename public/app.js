@@ -103,26 +103,6 @@
     );
   }
 
-  function renderLanding() {
-    const box = document.getElementById("landing-prices");
-    box.innerHTML = "";
-    state.plans.forEach((plan) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "price-card";
-      btn.innerHTML =
-        "<strong>" + formatSom(plan.price) + "</strong><span>" +
-        (plan.old_price ? plan.days / 30 + " oy • " + formatSom(plan.old_price) + " dan" : plan.days / 30 + " oy") +
-        "</span>";
-      btn.addEventListener("click", () => {
-        haptic("select");
-        state.selectedPlanId = plan.id;
-        showPage("plans");
-      });
-      box.appendChild(btn);
-    });
-  }
-
   function renderPlans() {
     const box = document.getElementById("plans");
     box.innerHTML = "";
@@ -192,6 +172,80 @@
     }
   }
 
+  function applyTelegramTheme() {
+    if (!tg) {
+      return;
+    }
+
+    try {
+      tg.ready();
+    } catch (error) {
+      /* ready oldin chaqirilgan bo‘lishi mumkin */
+    }
+
+    try {
+      tg.expand();
+    } catch (error) {
+      /* expand yo‘q versiyalar */
+    }
+
+    hideNativeButton();
+
+    const color = "#1c1c1e";
+
+    try {
+      tg.setHeaderColor(color);
+    } catch (error) {
+      /* eski Telegram */
+    }
+
+    try {
+      tg.setBackgroundColor(color);
+    } catch (error) {
+      /* eski Telegram */
+    }
+
+    try {
+      if (tg.setBottomBarColor) {
+        tg.setBottomBarColor(color);
+      }
+    } catch (error) {
+      /* bottom bar yo‘q */
+    }
+
+    try {
+      if (tg.disableVerticalSwipes) {
+        tg.disableVerticalSwipes();
+      }
+    } catch (error) {
+      /* swipes sozlamasi yo‘q */
+    }
+  }
+
+  function bindBackButton() {
+    if (!tg || !tg.BackButton || bindBackButton.done) {
+      return;
+    }
+
+    bindBackButton.done = true;
+    tg.BackButton.onClick(() => {
+      haptic("light");
+      showPage("plans");
+    });
+  }
+
+  function syncBackButton(name) {
+    if (!tg || !tg.BackButton) {
+      return;
+    }
+
+    if (name === "pay" || name === "done" || name === "panel" || name === "about") {
+      tg.BackButton.show();
+    } else {
+      tg.BackButton.hide();
+    }
+  }
+
   function haptic(kind) {
     try {
       if (!tg || !tg.HapticFeedback) {
@@ -216,14 +270,13 @@
       renderPay();
     } else if (name === "plans") {
       renderPlans();
-    } else if (name === "about") {
-      renderLanding();
     } else if (name === "done") {
       renderDone();
     }
 
     show(name);
     hideNativeButton();
+    syncBackButton(name);
   }
 
   function openModal(text) {
@@ -363,23 +416,22 @@
       return;
     }
 
+    if (!tg || !tg.initData) {
+      show("error");
+      return;
+    }
+
+    applyTelegramTheme();
+    bindBackButton();
+
+    try {
+      await loadMe();
+    } catch (error) {
+      show("error");
+      return;
+    }
+
     if (params.get("paid") === "1") {
-      if (!tg || !tg.initData) {
-        show("error");
-        return;
-      }
-
-      tg.ready();
-      tg.expand();
-      hideNativeButton();
-
-      try {
-        await loadMe();
-      } catch (error) {
-        show("error");
-        return;
-      }
-
       showPage("done");
 
       if (isActive()) {
@@ -390,28 +442,6 @@
         }
       }
 
-      return;
-    }
-
-    if (!tg || !tg.initData) {
-      show("error");
-      return;
-    }
-
-    tg.ready();
-    tg.expand();
-    hideNativeButton();
-    try {
-      tg.setHeaderColor("#1c1c1e");
-      tg.setBackgroundColor("#1c1c1e");
-    } catch (error) {
-      /* eski Telegram versiyalarida rang sozlamasi bo‘lmasligi mumkin */
-    }
-
-    try {
-      await loadMe();
-    } catch (error) {
-      show("error");
       return;
     }
 

@@ -15,6 +15,11 @@
   padding: 0;
 }
 
+html {
+  color-scheme: dark;
+  background: #1c1c1e;
+}
+
 html,
 body {
   min-height: 100%;
@@ -31,7 +36,8 @@ body {
 }
 
 .page-plans,
-.page-pay {
+.page-pay,
+#page-about {
   padding-bottom: calc(var(--safe) + 76px);
 }
 
@@ -272,8 +278,10 @@ h1 {
   overflow: hidden;
   height: 150px;
   margin: 14px 0 18px;
-  border-radius: 10px;
+  border: 1.5px solid #5b9cff;
+  border-radius: 16px;
   background: #000;
+  animation: edgeShift 6s linear infinite;
 }
 
 .logo-card img {
@@ -298,9 +306,11 @@ h1 {
   padding: 14px 16px;
   border-radius: 22px;
   background: var(--card);
-  border: 1px solid var(--line);
+  border: 1.5px solid #5b9cff;
   font-size: 20px;
   font-weight: 700;
+  animation: edgeShift 7s linear infinite;
+  animation-delay: -1.5s;
 }
 
 .chips {
@@ -402,9 +412,11 @@ h1 {
 .menu {
   overflow: hidden;
   margin-top: 12px;
-  border-radius: 10px;
+  border-radius: 16px;
   background: var(--card);
-  border: 1px solid var(--line);
+  border: 1.5px solid #5b9cff;
+  animation: edgeShift 6s linear infinite;
+  animation-delay: -2.5s;
 }
 
 .menu-row {
@@ -670,6 +682,9 @@ button,
   .plan,
   .chip,
   .method,
+  .logo-card,
+  .amount-box,
+  .menu,
   .btn-gold::after,
   .btn-buy::after,
   .plan.selected,

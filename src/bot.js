@@ -52,7 +52,6 @@ function createTelegram({ pool, config }) {
   const api = bot.api;
 
   const webAppUrl = config.publicUrl ? `${config.publicUrl}/` : "";
-  const aboutUrl = config.publicUrl ? `${config.publicUrl}/?page=about` : "";
   const panelUrl = config.publicUrl ? `${config.publicUrl}/?page=panel` : "";
 
   function mainKeyboard() {
@@ -60,10 +59,6 @@ function createTelegram({ pool, config }) {
 
     if (webAppUrl) {
       keyboard.webApp("Obuna ulash", webAppUrl).row();
-    }
-
-    if (aboutUrl) {
-      keyboard.webApp("LEYLI MEDIA", aboutUrl).row();
     }
 
     if (panelUrl) {
@@ -284,7 +279,7 @@ function createTelegram({ pool, config }) {
     await api.setChatMenuButton({
       menu_button: {
         type: "web_app",
-        text: "💎 Premium",
+        text: "Obuna",
         web_app: { url: webAppUrl }
       }
     });
