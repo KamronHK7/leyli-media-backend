@@ -70,6 +70,16 @@ async function initDatabase(pool, config) {
       `,
       [String(config.paymeTestUserId)]
     );
+
+    // Sandbox qayta yugurganda eski to'lanmagan test to'lovlari Create ni bloklamasin
+    await pool.query(
+      `
+        UPDATE payme_transactions
+        SET state = -1, cancel_time = $1, reason = 4
+        WHERE telegram_user_id = $2 AND state = 1
+      `,
+      [Date.now(), String(config.paymeTestUserId)]
+    );
   }
 
   console.log("✅ Database tables tayyor");

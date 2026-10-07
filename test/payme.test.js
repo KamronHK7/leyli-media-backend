@@ -61,6 +61,35 @@ test("Payme Merchant API sandbox ssenariylari", async (t) => {
   );
   assert.equal(r.body.error.code, -32504);
 
+  r = await rpc(
+    sandbox.url,
+    "CreateTransaction",
+    { id: "stale1", time: now - 120000, amount, account },
+    paymeAuth("Paycom", "sandbox_key_value"),
+    { "Test-Operation": "Paycom" }
+  );
+  assert.equal(r.body.result.state, 1);
+  await sandbox.pool.query(
+    `UPDATE payme_transactions SET create_time = $1 WHERE payme_id = 'stale1'`,
+    [Date.now() - 120000]
+  );
+  r = await rpc(
+    sandbox.url,
+    "CreateTransaction",
+    { id: "fresh1", time: now, amount, account },
+    paymeAuth("Paycom", "sandbox_key_value"),
+    { "Test-Operation": "Paycom" }
+  );
+  assert.equal(r.body.result.state, 1);
+  r = await rpc(
+    sandbox.url,
+    "CreateTransaction",
+    { id: "fresh2", time: now, amount, account },
+    paymeAuth("Paycom", "sandbox_key_value"),
+    { "Test-Operation": "Paycom" }
+  );
+  assert.equal(r.body.error.code, -31050);
+
   r = await rpc(env.url, "CreateTransaction", { id: "tx1", time: now, amount, account }, AUTH);
   assert.equal(r.body.result.state, 1);
 

@@ -160,6 +160,7 @@ function createPaymeRouter({ pool, config, hooks = {} }) {
       return reject();
     }
 
+    req.paymeSandbox = isSandbox;
     next();
   }
 
@@ -286,10 +287,14 @@ function createPaymeRouter({ pool, config, hooks = {} }) {
           [check.telegramUserId, String(paymeId)]
         );
 
+        const SANDBOX_STALE_MS = 60 * 1000;
         let busy = false;
 
         for (const row of active.rows) {
-          if (isExpired(row)) {
+          const age = Date.now() - Number(row.create_time);
+          const staleSandbox = req.paymeSandbox && age > SANDBOX_STALE_MS;
+
+          if (isExpired(row) || staleSandbox) {
             await cancelExpired(row);
           } else {
             busy = true;
