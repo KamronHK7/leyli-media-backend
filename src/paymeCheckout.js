@@ -10,9 +10,7 @@ function escapeHtml(value) {
 }
 
 function checkoutAction(config) {
-  // Test kassa: https://test.paycom.uz (Payme POST docs).
-  // Production checkout.paycom.uz bu kassani topmaydi (-31601).
-  return config.paymeUseProdCheckout ? "https://checkout.paycom.uz" : "https://test.paycom.uz";
+  return config.paymeTestMode ? "https://test.paycom.uz" : "https://checkout.paycom.uz";
 }
 
 function buildCheckoutUrl({ config, userId, plan }) {
@@ -54,6 +52,8 @@ function payFormPage({ merchant, amount, userId, callback, action }) {
       <input type="hidden" name="merchant" value="${m}">
       <input type="hidden" name="amount" value="${a}">
       <input type="hidden" name="account[user_id]" value="${uid}">
+      <input type="hidden" name="account[full_name]" value="LEYLI MEDIA">
+      <input type="hidden" name="account[phone_number]" value="998900000000">
       <input type="hidden" name="lang" value="uz">
       <input type="hidden" name="callback" value="${c}">
       <input type="hidden" name="callback_timeout" value="15000">
