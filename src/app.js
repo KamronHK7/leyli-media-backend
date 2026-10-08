@@ -2,12 +2,12 @@ const path = require("path");
 const crypto = require("crypto");
 const express = require("express");
 
-const { getPlanById } = require("./config");
+const { getPlanById, getPlanByAmount } = require("./config");
 const { createPaymeRouter, rpcError, MESSAGES } = require("./payme");
 const { createApiRouter } = require("./api");
 const { runExpiryJob } = require("./jobs");
 const { grantSubscription } = require("./subscriptions");
-const { payFormPage, checkoutAction, checkoutReturnUrl } = require("./paymeCheckout");
+const { buildCheckoutUrl } = require("./paymeCheckout");
 
 function cronAuthorized(req, config) {
   const given = String(req.query.secret || "");
@@ -158,35 +158,27 @@ function createApp({ pool, config, notifier, webhookHandler }) {
   });
 
   /*
-    payme.uz/fallback/merchant — merchant forma (FISH/Oldinga) va iOS
-    "Access denied" xatosini beradi. checkout.paycom.uz GET esa ilovani
-    bosh sahifaga olib ketadi. O'z /pay sahifamiz POST qiladi: Payme
-    to'g'ridan-to'g'ri To'lash chekini ochadi.
+    Web forma checkout.paycom.uz da [object Object] beradi.
+    /pay to'g'ridan-to'g'ri ilova cheki havolasiga yo'naltiradi.
   */
   app.get("/pay", (req, res) => {
-    res.setHeader("Referrer-Policy", "origin");
     const amount = String(req.query.a || "");
     const userId = String(req.query.uid || "");
-    const merchant = config.paymeMerchantId || "";
-    const callback = checkoutReturnUrl(config);
+    const plan = getPlanByAmount(amount);
 
-    if (!merchant || !/^\d{3,12}$/.test(amount) || !/^\d{1,20}$/.test(userId)) {
+    if (!config.paymeMerchantId || !plan || !/^\d{1,20}$/.test(userId)) {
       res.status(400).type("html").send("<p>To‘lov parametrlari noto‘g‘ri.</p>");
       return;
     }
 
-    res
-      .status(200)
-      .type("html")
-      .send(
-        payFormPage({
-          merchant,
-          amount,
-          userId,
-          callback,
-          action: checkoutAction(config)
-        })
-      );
+    res.redirect(
+      302,
+      buildCheckoutUrl({
+        config,
+        userId,
+        plan
+      })
+    );
   });
 
   /* Mini app (statik fayllar) */

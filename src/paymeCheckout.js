@@ -58,7 +58,9 @@ function buildCheckoutUrl({ config, userId, plan }) {
     "l=uz"
   ];
 
-  parts.push(`c=${checkoutReturnUrl(config)}`, "ct=15000");
+  if (config.publicUrl) {
+    parts.push(`c=${config.publicUrl}/paid`, "ct=15000");
+  }
 
   return `${checkoutAction(config)}/${encodeCheckoutToken(parts.join(";"))}`;
 }

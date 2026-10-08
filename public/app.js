@@ -293,8 +293,8 @@
   }
 
   function openPayme(url) {
-    // checkout.paycom.uz GET Telegramdan Payme ilovasini bosh sahifada ochadi.
-    // Avval o'z /pay sahifamiz: POST bilan web cheque ochiladi.
+    // checkout.paycom.uz/{chek} — Payme ilovasi to'lov oynasini ochadi.
+    // O'z saytimizdagi forma brauzerda [object Object] beradi.
     if (tg && typeof tg.openLink === "function") {
       try {
         tg.openLink(url, { try_instant_view: false });
@@ -321,12 +321,6 @@
           formatSom(plan.price) +
           ". Bot orqali ochilganda shu summa bilan Payme ochiladi."
       );
-      return;
-    }
-
-    const readyUrl = state.checkoutUrls[plan.id];
-    if (readyUrl) {
-      openPayme(readyUrl);
       return;
     }
 
