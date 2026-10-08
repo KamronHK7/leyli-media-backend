@@ -293,26 +293,18 @@
     document.getElementById("modal").classList.add("hidden");
   }
 
-  function paymeAppUrl(data) {
-    if (!data) {
-      return "";
+  function openPayme(url) {
+    if (tg && typeof tg.openLink === "function") {
+      try {
+        tg.openLink(url, { try_instant_view: false });
+        return;
+      } catch (error) {
+        tg.openLink(url);
+        return;
+      }
     }
 
-    const android = !tg || tg.platform === "android" || tg.platform === "android_x";
-
-    if (android && data.intent_url) {
-      return data.intent_url;
-    }
-
-    return data.url || "";
-  }
-
-  function openPaymeApp(url) {
-    const link = document.createElement("a");
-    link.href = url;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    window.location.assign(url);
   }
 
   async function checkout() {
@@ -331,9 +323,9 @@
       return;
     }
 
-    const cached = paymeAppUrl(state.payLinks && state.payLinks[plan.id]);
+    const cached = state.payLinks && state.payLinks[plan.id];
     if (cached) {
-      openPaymeApp(cached);
+      openPayme(cached);
       return;
     }
 
@@ -352,15 +344,13 @@
         body: JSON.stringify({ plan_id: plan.id })
       });
 
-      const appUrl = paymeAppUrl(data);
-
-      if (!appUrl) {
+      if (!data.url) {
         throw new Error("no_checkout_url");
       }
 
       state.payLinks = state.payLinks || {};
-      state.payLinks[plan.id] = data;
-      openPaymeApp(appUrl);
+      state.payLinks[plan.id] = data.url;
+      openPayme(data.url);
     } catch (error) {
       const reason = error && error.message ? String(error.message) : "";
       if (reason === "payment_not_configured") {

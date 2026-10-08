@@ -2,7 +2,6 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 
 const { createTestEnv, signInitData } = require("./helpers");
-const { getPlanById } = require("../src/config");
 const {
   buildCheckoutUrl,
   checkoutMerchantId,
@@ -48,38 +47,24 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
   });
   body = await res.json();
 
-  assert.equal(res.status, 502);
-  assert.equal(body.ok, false);
-  assert.equal(body.error, "payme_checkout_failed");
+  assert.equal(res.status, 200);
+  assert.equal(body.ok, true);
+  assert.match(body.url, /^https:\/\/checkout\.paycom\.uz\//);
   assert.equal(checkoutMerchantId("6ab529facfe373334cb78b3e"), "6abfadbab3bf8da2d9c3742b");
   assert.equal(checkoutMerchantId("merchant-id"), "merchant-id");
-  const decoded = decodeCheckoutToken(
-    buildCheckoutUrl({
-      config: env.config,
-      userId: "777",
-      plan: getPlanById("month_1")
-    })
-  );
+  const decoded = decodeCheckoutToken(body.url);
   assert.match(decoded, /(?:^|;)m=merchant-id(?:;|$)/);
   assert.match(decoded, /(?:^|;)ac\.user_id=777(?:;|$)/);
   assert.equal(decoded.includes("ac.full_name"), false);
   assert.equal(decoded.includes("ac.username"), false);
   assert.equal(decoded.includes("ac.phone_number"), false);
   assert.match(decoded, /(?:^|;)a=2000000(?:;|$)/);
-  assert.equal(
-    buildCheckoutUrl({
-      config: env.config,
-      userId: "777",
-      plan: getPlanById("month_1")
-    }).includes("payme.uz/fallback"),
-    false
-  );
+  assert.equal(decoded.includes("payme.uz/fallback"), false);
 
-  res = await fetch(`${env.url}/pay?a=2000000&uid=777`, {
-    redirect: "manual",
-    headers: { "User-Agent": "Mozilla/5.0 (Linux; Android 14; Mobile)" }
-  });
-  assert.equal(res.status, 502);
+  res = await fetch(`${env.url}/pay?a=2000000&uid=777`, { redirect: "manual" });
+  assert.equal(res.status, 302);
+  assert.match(res.headers.get("location"), /^https:\/\/checkout\.paycom\.uz\//);
+  assert.match(decodeCheckoutToken(res.headers.get("location")), /(?:^|;)ac\.user_id=777(?:;|$)/);
 
   res = await fetch(`${env.url}/api/checkout`, {
     method: "POST",
@@ -90,8 +75,8 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
     body: JSON.stringify({ plan_id: "month_6" })
   });
   body = await res.json();
-  assert.equal(res.status, 502);
-  assert.equal(body.error, "payme_checkout_failed");
+  assert.equal(res.status, 200);
+  assert.match(decodeCheckoutToken(body.url), /(?:^|;)a=10900000(?:;|$)/);
 
   res = await fetch(`${env.url}/payme`);
   assert.equal(res.status, 200);

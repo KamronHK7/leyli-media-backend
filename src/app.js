@@ -7,7 +7,7 @@ const { createPaymeRouter, rpcError, MESSAGES } = require("./payme");
 const { createApiRouter } = require("./api");
 const { runExpiryJob } = require("./jobs");
 const { grantSubscription } = require("./subscriptions");
-const { buildCheckoutUrl, resolvePaymeLaunch, paymeReceiptIntent } = require("./paymeCheckout");
+const { buildCheckoutUrl } = require("./paymeCheckout");
 
 function cronAuthorized(req, config) {
   const given = String(req.query.secret || "");
@@ -158,10 +158,10 @@ function createApp({ pool, config, notifier, webhookHandler }) {
   });
 
   /*
-    checkout.paycom.uz/{base64} Payme ilovasini bosh sahifada ochadi.
-    paycom://checkout.paycom.uz/{chek} to'lov oynasini ochadi.
+    Payme GET chek: checkout.paycom.uz/base64(m;ac.user_id;a).
+    Mijoz shu havolaga o'tgach Payme bizning /payme endpointiga so'rov yuboradi.
   */
-  app.get("/pay", async (req, res) => {
+  app.get("/pay", (req, res) => {
     const amount = String(req.query.a || "");
     const userId = String(req.query.uid || "");
     const plan = getPlanByAmount(amount);
@@ -171,18 +171,8 @@ function createApp({ pool, config, notifier, webhookHandler }) {
       return;
     }
 
-    try {
-      const launch = await resolvePaymeLaunch(buildCheckoutUrl({ config, userId, plan }));
-      const agent = String(req.headers["user-agent"] || "").toLowerCase();
-      const iphone = agent.includes("iphone") || agent.includes("ipad");
-      res.setHeader("Cache-Control", "no-store");
-      res.status(302);
-      res.setHeader("Location", iphone ? launch.appLink : paymeReceiptIntent(launch.id));
-      res.end();
-    } catch (error) {
-      console.error("❌ PAY:", error.paymeTitle || error.message);
-      res.status(502).type("html").send("<p>Payme chekini ochib bo‘lmadi.</p>");
-    }
+    res.setHeader("Cache-Control", "no-store");
+    res.redirect(302, buildCheckoutUrl({ config, userId, plan }));
   });
 
   /* Mini app (statik fayllar) */
