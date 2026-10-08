@@ -60,7 +60,8 @@ async function recoverMissedPayments({ pool, notifier }) {
   oy bermaydi. Faol obuna ustiga yangi muddat qo'shiladi.
 */
 const MANUAL_GRANTS = [
-  { token: "20261008-2096644395-month_1", userId: "2096644395", planId: "month_1", firstName: "mijoz" }
+  { token: "20261008-2096644395-month_1", userId: "2096644395", planId: "month_1", firstName: "mijoz" },
+  { token: "20261008-8760950649-month_1", userId: "8760950649", planId: "month_1", firstName: "mijoz" }
 ];
 
 async function applyManualGrants({ pool, notifier }) {
