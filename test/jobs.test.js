@@ -65,7 +65,7 @@ test("To'lov o'tib ketganda obunani qo'lda ochish", async (t) => {
     notifier: env.notifier
   });
   assert.equal(recovered.skipped, 1);
-  assert.equal(recovered.granted, 1);
+  assert.equal(recovered.granted, 2);
 });
 
 test("O'tib ketgan to'lovni server ishga tushganda tiklash", async (t) => {
@@ -76,7 +76,7 @@ test("O'tib ketgan to'lovni server ishga tushganda tiklash", async (t) => {
     pool: env.pool,
     notifier: env.notifier
   });
-  assert.equal(first.granted, 2);
+  assert.equal(first.granted, 3);
   assert.equal(env.notifier.calls.some((c) => c[0] === "paid"), true);
 
   const second = await recoverMissedPayments({
@@ -84,5 +84,5 @@ test("O'tib ketgan to'lovni server ishga tushganda tiklash", async (t) => {
     notifier: env.notifier
   });
   assert.equal(second.granted, 0);
-  assert.equal(second.skipped, 2);
+  assert.equal(second.skipped, 3);
 });

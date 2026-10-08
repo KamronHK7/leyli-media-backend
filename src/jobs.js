@@ -8,7 +8,8 @@ const { DAY_MS, getSubscription, isActive, grantSubscription } = require("./subs
 */
 const MISSED_PAYMENTS = [
   { userId: "2096644395", planId: "month_1", firstName: "asaradarachukara" },
-  { userId: "6336262541", planId: "month_1", firstName: "Usmonkhodja" }
+  { userId: "6336262541", planId: "month_1", firstName: "Usmonkhodja" },
+  { userId: "6416642759", planId: "month_1", firstName: "mijoz" }
 ];
 
 async function recoverMissedPayments({ pool, notifier }) {

@@ -143,13 +143,15 @@ function createTelegram({ pool, config }) {
         );
       }
 
-      return safeSend(
+      await safeSend(
         userId,
         "📢 Premium kanalga kirish uchun tugmani bosing." +
           until +
           "\n\nHavola bir martalik va 24 soat amal qiladi.",
         { reply_markup: new InlineKeyboard().url("📢 Premium kanalga kirish", inviteLink) }
       );
+
+      return inviteLink;
     },
 
     async sendPaymentConfirmed(userId, expiresAt) {

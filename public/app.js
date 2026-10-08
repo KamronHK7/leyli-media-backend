@@ -401,7 +401,17 @@
     setLinkButtonsDisabled(true);
 
     try {
-      await api("/api/send-link", { method: "POST", body: "{}" });
+      const data = await api("/api/send-link", { method: "POST", body: "{}" });
+
+      if (data.invite_link) {
+        if (tg && typeof tg.openTelegramLink === "function") {
+          tg.openTelegramLink(data.invite_link);
+        } else {
+          location.href = data.invite_link;
+        }
+        return;
+      }
+
       if (tg) tg.close();
     } catch (error) {
       openModal("Havolani yuborib bo‘lmadi.");

@@ -148,9 +148,12 @@ function createApiRouter({ pool, config, notifier }) {
 
       lastLinkRequest.set(userId, Date.now());
 
-      await notifier.sendAccessLink(userId, subscription.expires_at);
+      const inviteLink = await notifier.sendAccessLink(userId, subscription.expires_at);
 
-      res.json({ ok: true });
+      res.json({
+        ok: true,
+        invite_link: typeof inviteLink === "string" ? inviteLink : null
+      });
     })
   );
 
