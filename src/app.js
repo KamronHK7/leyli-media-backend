@@ -7,7 +7,7 @@ const { createPaymeRouter, rpcError, MESSAGES } = require("./payme");
 const { createApiRouter } = require("./api");
 const { runExpiryJob } = require("./jobs");
 const { grantSubscription } = require("./subscriptions");
-const { buildCheckoutUrl, paymeIntentUrl, resolvePaymeLaunch } = require("./paymeCheckout");
+const { buildCheckoutUrl, chromeCheckoutIntent } = require("./paymeCheckout");
 
 function cronAuthorized(req, config) {
   const given = String(req.query.secret || "");
@@ -158,10 +158,10 @@ function createApp({ pool, config, notifier, webhookHandler }) {
   });
 
   /*
-    checkout.paycom.uz havolasini Payme ilovasi bosh sahifada ochadi.
-    /pay chekni yaratadi va brauzerdan paycom:// chekiga o'tkazadi.
+    To'g'ridan-to'g'ri checkout.paycom.uz ni ochsa Payme ilovasi bosh sahifada qoladi.
+    Chrome da ochilsa Payme o'z skripti ilovadagi to'lov chekini ochadi.
   */
-  app.get("/pay", async (req, res) => {
+  app.get("/pay", (req, res) => {
     const amount = String(req.query.a || "");
     const userId = String(req.query.uid || "");
     const plan = getPlanByAmount(amount);
@@ -171,37 +171,14 @@ function createApp({ pool, config, notifier, webhookHandler }) {
       return;
     }
 
-    try {
-      const launch = await resolvePaymeLaunch(
-        buildCheckoutUrl({
-          config,
-          userId,
-          plan
-        })
-      );
+    const checkoutUrl = buildCheckoutUrl({ config, userId, plan });
+    const agent = String(req.headers["user-agent"] || "").toLowerCase();
+    const iphone = agent.includes("iphone") || agent.includes("ipad");
 
-      if (!launch) {
-        res.status(502).type("html").send("<p>Payme chekini ochib bo‘lmadi.</p>");
-        return;
-      }
-
-      const agent = String(req.headers["user-agent"] || "").toLowerCase();
-      const target = agent.includes("iphone") || agent.includes("ipad")
-        ? launch.appLink
-        : paymeIntentUrl(launch.id);
-
-      res.setHeader("Cache-Control", "no-store");
-      res.status(302);
-      res.setHeader("Location", target);
-      res.end();
-    } catch (error) {
-      console.error("❌ PAY:", error.paymeStatus || "", error.paymeTitle || error.message);
-      res.setHeader(
-        "X-Payme-Title",
-        encodeURIComponent(String(error.paymeTitle || error.message || "")).slice(0, 180)
-      );
-      res.status(502).type("html").send("<p>Payme chekini ochib bo‘lmadi.</p>");
-    }
+    res.setHeader("Cache-Control", "no-store");
+    res.status(302);
+    res.setHeader("Location", iphone ? checkoutUrl : chromeCheckoutIntent(checkoutUrl));
+    res.end();
   });
 
   /* Mini app (statik fayllar) */

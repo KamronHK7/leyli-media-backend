@@ -298,11 +298,13 @@
       return "";
     }
 
-    if (tg && tg.platform === "android" && data.intent_url) {
+    const android = !tg || tg.platform === "android" || tg.platform === "android_x";
+
+    if (android && data.intent_url) {
       return data.intent_url;
     }
 
-    return data.app_url || "";
+    return data.url || "";
   }
 
   function openPaymeApp(url) {

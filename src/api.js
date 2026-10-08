@@ -4,7 +4,7 @@ const { validateInitData } = require("./telegramAuth");
 const { upsertUser } = require("./db");
 const { PLANS, publicPlan, getPlanById } = require("./config");
 const { getSubscription, isActive } = require("./subscriptions");
-const { buildCheckoutUrl, buildPayFormUrl, paymeIntentUrl, resolvePaymeLaunch } = require("./paymeCheckout");
+const { buildCheckoutUrl, buildPayFormUrl, chromeCheckoutIntent } = require("./paymeCheckout");
 
 const LINK_COOLDOWN_MS = 20 * 1000;
 
@@ -105,28 +105,17 @@ function createApiRouter({ pool, config, notifier }) {
 
       await upsertUser(pool, req.tgUser);
 
-      try {
-        const launch = await resolvePaymeLaunch(
-          buildCheckoutUrl({
-            config,
-            userId: String(req.tgUser.id),
-            plan
-          })
-        );
+      const url = buildCheckoutUrl({
+        config,
+        userId: String(req.tgUser.id),
+        plan
+      });
 
-        if (!launch) {
-          return res.status(502).json({ ok: false, error: "payme_checkout_failed" });
-        }
-
-        return res.json({
-          ok: true,
-          app_url: launch.appLink,
-          intent_url: paymeIntentUrl(launch.id)
-        });
-      } catch (error) {
-        console.error("PAYME CHECKOUT:", error.message);
-        return res.status(502).json({ ok: false, error: "payme_checkout_failed" });
-      }
+      res.json({
+        ok: true,
+        url,
+        intent_url: chromeCheckoutIntent(url)
+      });
     })
   );
 

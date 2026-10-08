@@ -86,8 +86,9 @@ function paymeLaunchFromHtml(html) {
   };
 }
 
-function paymeIntentUrl(id) {
-  return `intent://checkout.paycom.uz/${id}#Intent;scheme=paycom;package=uz.dida.payme;end`;
+function chromeCheckoutIntent(checkoutUrl) {
+  const path = String(checkoutUrl).replace(/^https?:\/\//, "");
+  return `intent://${path}#Intent;scheme=https;package=com.android.chrome;end`;
 }
 
 async function resolvePaymeLaunch(checkoutUrl) {
@@ -157,7 +158,7 @@ module.exports = {
   buildCheckoutUrl,
   buildPayFormUrl,
   paymeLaunchFromHtml,
-  paymeIntentUrl,
+  chromeCheckoutIntent,
   resolvePaymeLaunch,
   payLaunchPage,
   checkoutAction,
