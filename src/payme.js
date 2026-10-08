@@ -123,63 +123,121 @@ function getTelegramUserId(account) {
 function createPaymeRouter({ pool, config, hooks = {} }) {
   const router = express.Router();
   const liveKeys = {
-    sandbox: config.paymeTestKey || config.paymeKey,
-    production: config.paymeKey
+    sandbox: String(config.paymeTestKey || config.paymeKey || "").trim(),
+    production: String(config.paymeKey || "").trim()
   };
+
+  let keysLoad = null;
+
+  function ensureKeysLoaded() {
+    if (!keysLoad) {
+      keysLoad = pool
+        .query(`SELECT kind, password FROM payme_keys`)
+        .then((result) => {
+          for (const row of result.rows) {
+            const password = String(row.password || "").trim();
+            if (!password) continue;
+            if (row.kind === "sandbox") liveKeys.sandbox = password;
+            if (row.kind === "production") liveKeys.production = password;
+          }
+        })
+        .catch((error) => {
+          keysLoad = null;
+          console.error("❌ PAYME KEYS:", error.message);
+        });
+    }
+
+    return keysLoad;
+  }
+
+  async function persistKey(kind, password) {
+    await pool.query(
+      `
+        INSERT INTO payme_keys (kind, password, updated_at)
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (kind)
+        DO UPDATE SET password = EXCLUDED.password, updated_at = NOW()
+      `,
+      [kind, password]
+    );
+  }
+
+  function loginAllowed(login) {
+    const given = String(login || "").trim();
+    const allowed = ["Paycom", config.paymeLogin, config.paymeMerchantId]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean);
+
+    return allowed.some((value) => safeEqual(given, value));
+  }
 
   function checkAuth(req, res, next) {
     const reject = () =>
       rpcError(res, req.body?.id, -32504, MESSAGES.unauthorized);
 
-    console.log("📥 PAYME HIT", req.body?.method || "no-method");
+    Promise.resolve()
+      .then(async () => {
+        console.log("📥 PAYME HIT", req.body?.method || "no-method");
 
-    const headerSandbox =
-      String(req.headers["test-operation"] || "").toLowerCase() === "paycom";
+        const headerSandbox =
+          String(req.headers["test-operation"] || "").toLowerCase() === "paycom";
 
-    if (!config.paymeLogin) {
-      console.error("❌ PAYME_LOGIN o'rnatilmagan");
-      return reject();
-    }
+        await ensureKeysLoaded();
 
-    const auth = req.headers.authorization;
+        if (!liveKeys.production && !liveKeys.sandbox) {
+          console.error("❌ PAYME_KEY o'rnatilmagan");
+          return reject();
+        }
 
-    if (!auth || !auth.startsWith("Basic ")) {
-      console.error("❌ PAYME AUTH: Authorization yo'q");
-      return reject();
-    }
+        const auth = req.headers.authorization;
 
-    let decoded;
+        if (!auth || !auth.startsWith("Basic ")) {
+          console.error("❌ PAYME AUTH: Authorization yo'q");
+          return reject();
+        }
 
-    try {
-      decoded = Buffer.from(auth.substring(6).trim(), "base64").toString("utf8");
-    } catch (error) {
-      return reject();
-    }
+        let decoded;
 
-    const separator = decoded.indexOf(":");
+        try {
+          decoded = Buffer.from(auth.substring(6).trim(), "base64").toString("utf8");
+        } catch (error) {
+          return reject();
+        }
 
-    if (separator === -1) {
-      return reject();
-    }
+        const separator = decoded.indexOf(":");
 
-    const login = decoded.substring(0, separator);
-    const password = decoded.substring(separator + 1);
+        if (separator === -1) {
+          return reject();
+        }
 
-    if (!safeEqual(login, config.paymeLogin)) {
-      console.error("❌ PAYME AUTH: login/kalit mos emas");
-      return reject();
-    }
+        const login = decoded.substring(0, separator).trim();
+        const password = decoded.substring(separator + 1).trim();
 
-    const matchesProd = Boolean(liveKeys.production) && safeEqual(password, liveKeys.production);
-    const matchesTest = Boolean(liveKeys.sandbox) && safeEqual(password, liveKeys.sandbox);
+        if (!loginAllowed(login)) {
+          console.error("❌ PAYME AUTH: login mos emas", JSON.stringify(login));
+          return reject();
+        }
 
-    if (!matchesProd && !matchesTest) {
-      console.error("❌ PAYME AUTH: login/kalit mos emas");
-      return reject();
-    }
+        const matchesProd = Boolean(liveKeys.production) && safeEqual(password, liveKeys.production);
+        const matchesTest = Boolean(liveKeys.sandbox) && safeEqual(password, liveKeys.sandbox);
 
-    req.paymeSandbox = headerSandbox || matchesTest || Boolean(config.paymeTestMode);
-    next();
+        if (!matchesProd && !matchesTest) {
+          console.error(
+            "❌ PAYME AUTH: kalit mos emas",
+            `passLen=${password.length}`,
+            `testLen=${liveKeys.sandbox.length}`,
+            `prodLen=${liveKeys.production.length}`
+          );
+          return reject();
+        }
+
+        req.paymeSandbox = headerSandbox || matchesTest || Boolean(config.paymeTestMode);
+        next();
+      })
+      .catch((error) => {
+        console.error("❌ PAYME AUTH:", error.message);
+        return reject();
+      });
   }
 
   async function telegramUserExists(telegramUserId) {
@@ -551,18 +609,16 @@ function createPaymeRouter({ pool, config, hooks = {} }) {
 
       /* ChangePassword */
       if (method === "ChangePassword") {
-        const nextPassword = String(params?.password || "");
+        const nextPassword = String(params?.password || "").trim();
         const currentKey = req.paymeSandbox ? liveKeys.sandbox : liveKeys.production;
 
         if (!nextPassword || nextPassword === currentKey) {
           return rpcError(res, id, -32400, MESSAGES.cannotChangePassword, "password");
         }
 
-        if (req.paymeSandbox) {
-          liveKeys.sandbox = nextPassword;
-        } else {
-          liveKeys.production = nextPassword;
-        }
+        const kind = req.paymeSandbox ? "sandbox" : "production";
+        await persistKey(kind, nextPassword);
+        liveKeys[kind === "sandbox" ? "sandbox" : "production"] = nextPassword;
 
         return rpcResult(res, id, { success: true });
       }

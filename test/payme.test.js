@@ -1,6 +1,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 
+const { createApp } = require("../src/app");
 const { createTestEnv, paymeAuth, rpc } = require("./helpers");
 
 const AUTH = paymeAuth("Paycom", "test_key");
@@ -163,4 +164,38 @@ test("Payme Merchant API sandbox ssenariylari", async (t) => {
     sandboxHeaders
   );
   assert.equal(r.body.result.allow, true);
+
+  const restarted = createApp({
+    pool: sandbox.pool,
+    config: sandbox.config,
+    notifier: sandbox.notifier,
+    webhookHandler: null
+  });
+  const restartedServer = await new Promise((resolve) => {
+    const s = restarted.listen(0, () => resolve(s));
+  });
+  t.after(() => restartedServer.close());
+  r = await rpc(
+    `http://127.0.0.1:${restartedServer.address().port}`,
+    "CheckPerformTransaction",
+    { amount, account },
+    paymeAuth("Paycom", "new_sandbox_key"),
+    sandboxHeaders
+  );
+  assert.equal(r.body.result.allow, true);
+
+  const loginEnv = await createTestEnv({
+    PAYME_LOGIN: "6ab529facfe373334cb78b3e",
+    PAYME_KEY: "prod_key_value",
+    PAYME_TEST_KEY: " sandbox_key_value ",
+    PAYME_TEST_USER_ID: "12345"
+  });
+  t.after(() => loginEnv.server.close());
+  r = await rpc(
+    loginEnv.url,
+    "CheckPerformTransaction",
+    { amount: 23232222, account: { user_id: "999999999" } },
+    paymeAuth("Paycom", "sandbox_key_value")
+  );
+  assert.equal(r.body.error.code, -31050);
 });

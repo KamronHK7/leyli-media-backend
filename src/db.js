@@ -80,6 +80,14 @@ async function initDatabase(pool, config) {
     )
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS payme_keys (
+      kind TEXT PRIMARY KEY,
+      password TEXT NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
   // Faqat Payme sandbox testi uchun (PAYME_TEST_USER_ID=12345).
   // Sandbox tasdiqlangandan keyin bu o'zgaruvchini o'chiring.
   if (config && config.paymeTestUserId) {

@@ -84,10 +84,10 @@ function loadConfig(env = process.env) {
         : ""),
     cronSecret: env.CRON_SECRET || env.BOT_SYNC_SECRET || "",
 
-    paymeLogin: env.PAYME_LOGIN || "",
-    paymeKey: env.PAYME_KEY || "",
-    paymeTestKey: env.PAYME_TEST_KEY || "",
-    paymeMerchantId: env.PAYME_MERCHANT_ID || "",
+    paymeLogin: String(env.PAYME_LOGIN || "").trim(),
+    paymeKey: String(env.PAYME_KEY || "").trim(),
+    paymeTestKey: String(env.PAYME_TEST_KEY || "").trim(),
+    paymeMerchantId: String(env.PAYME_MERCHANT_ID || "").trim(),
     // payme.uz/fallback/merchant — iOS ilovasini to'lov bilan ochadi
     paymeFallbackId: env.PAYME_FALLBACK_ID || "6ab52a1ca2b2e89ee143b4ca",
     paymeTestMode: env.PAYME_TEST_MODE === "true",
