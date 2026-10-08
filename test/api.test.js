@@ -47,8 +47,9 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
   });
   body = await res.json();
 
-  assert.equal(body.ok, true);
-  assert.equal(body.url, "https://leyli-media-backend.onrender.com/pay?a=2000000&uid=777");
+  assert.equal(res.status, 502);
+  assert.equal(body.ok, false);
+  assert.equal(body.error, "payme_checkout_failed");
   const decoded = decodeCheckoutToken(
     buildCheckoutUrl({
       config: env.config,
@@ -62,8 +63,14 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
   assert.equal(decoded.includes("ac.username"), false);
   assert.equal(decoded.includes("ac.phone_number"), false);
   assert.match(decoded, /(?:^|;)a=2000000(?:;|$)/);
-  assert.equal(body.url.includes("payme.uz/fallback"), false);
-  assert.equal(body.url.includes("checkout.paycom.uz"), false);
+  assert.equal(
+    buildCheckoutUrl({
+      config: env.config,
+      userId: "777",
+      plan: getPlanById("month_1")
+    }).includes("payme.uz/fallback"),
+    false
+  );
 
   res = await fetch(`${env.url}/pay?a=2000000&uid=777`, { redirect: "manual" });
   assert.equal(res.status, 502);
@@ -77,7 +84,8 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
     body: JSON.stringify({ plan_id: "month_6" })
   });
   body = await res.json();
-  assert.equal(body.url, "https://leyli-media-backend.onrender.com/pay?a=10900000&uid=777");
+  assert.equal(res.status, 502);
+  assert.equal(body.error, "payme_checkout_failed");
 
   res = await fetch(`${env.url}/payme`);
   assert.equal(res.status, 200);

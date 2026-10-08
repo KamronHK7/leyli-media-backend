@@ -63,7 +63,9 @@ function buildCheckoutUrl({ config, userId, plan }) {
 
 function paymeLaunchFromHtml(html) {
   const source = String(html);
-  const found = source.match(/paycom:\/\/checkout\.paycom\.uz\/([a-f0-9]{24})/i);
+  const found =
+    source.match(/paycom:\/\/checkout\.paycom\.uz\/([a-f0-9]{24})/i) ||
+    source.match(/https:\/\/checkout\.paycom\.uz\/([a-f0-9]{24})/i);
 
   if (!found) {
     return null;
@@ -77,17 +79,35 @@ function paymeLaunchFromHtml(html) {
     : `https://payme.uz/quick/checkout/${id}/start?back=null&timeout=15000&lang=uz`;
 
   return {
-    appLink: found[0],
+    appLink: `paycom://checkout.paycom.uz/${id}`,
     id,
     action,
     receipt: receiptMatch ? receiptMatch[1] : ""
   };
 }
 
+function paymeIntentUrl(id) {
+  return `intent://checkout.paycom.uz/${id}#Intent;scheme=paycom;package=uz.dida.payme;end`;
+}
+
 async function resolvePaymeLaunch(checkoutUrl) {
-  const response = await fetch(checkoutUrl, { signal: AbortSignal.timeout(8000) });
+  const response = await fetch(checkoutUrl, {
+    signal: AbortSignal.timeout(20000),
+    headers: {
+      Accept: "text/html",
+      "User-Agent":
+        "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+    }
+  });
   const html = await response.text();
-  return paymeLaunchFromHtml(html);
+  const launch = paymeLaunchFromHtml(html);
+
+  if (!launch) {
+    const title = (html.match(/<title>([^<]*)<\/title>/i) || [])[1] || "";
+    console.error("PAYME CHECKOUT: chek topilmadi", response.status, title.slice(0, 80));
+  }
+
+  return launch;
 }
 
 function payLaunchPage({ appLink, id, action, receipt }) {
@@ -134,6 +154,7 @@ module.exports = {
   buildCheckoutUrl,
   buildPayFormUrl,
   paymeLaunchFromHtml,
+  paymeIntentUrl,
   resolvePaymeLaunch,
   payLaunchPage,
   checkoutAction,

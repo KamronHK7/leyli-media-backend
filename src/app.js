@@ -7,7 +7,7 @@ const { createPaymeRouter, rpcError, MESSAGES } = require("./payme");
 const { createApiRouter } = require("./api");
 const { runExpiryJob } = require("./jobs");
 const { grantSubscription } = require("./subscriptions");
-const { buildCheckoutUrl, resolvePaymeLaunch, payLaunchPage } = require("./paymeCheckout");
+const { buildCheckoutUrl, paymeIntentUrl, resolvePaymeLaunch } = require("./paymeCheckout");
 
 function cronAuthorized(req, config) {
   const given = String(req.query.secret || "");
@@ -185,8 +185,15 @@ function createApp({ pool, config, notifier, webhookHandler }) {
         return;
       }
 
+      const agent = String(req.headers["user-agent"] || "").toLowerCase();
+      const target = agent.includes("iphone") || agent.includes("ipad")
+        ? launch.appLink
+        : paymeIntentUrl(launch.id);
+
       res.setHeader("Cache-Control", "no-store");
-      res.status(200).type("html").send(payLaunchPage(launch));
+      res.status(302);
+      res.setHeader("Location", target);
+      res.end();
     } catch (error) {
       console.error("❌ PAY:", error.message);
       res.status(502).type("html").send("<p>Payme chekini ochib bo‘lmadi.</p>");
@@ -195,7 +202,16 @@ function createApp({ pool, config, notifier, webhookHandler }) {
 
   /* Mini app (statik fayllar) */
   const publicDir = path.join(__dirname, "..", "public");
-  app.use(express.static(publicDir));
+  app.use(
+    express.static(publicDir, {
+      etag: false,
+      setHeaders(res, filePath) {
+        if (filePath.endsWith(".html") || filePath.endsWith(".js")) {
+          res.setHeader("Cache-Control", "no-store");
+        }
+      }
+    })
+  );
   app.get("/paid", (req, res) => {
     res.sendFile(path.join(publicDir, "index.html"));
   });

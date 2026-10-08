@@ -24,6 +24,7 @@
     user: null,
     plans: [],
     checkoutUrls: {},
+    payLinks: {},
     subscription: null,
     selectedPlanId: null,
     supportUrl: "",
@@ -292,18 +293,24 @@
     document.getElementById("modal").classList.add("hidden");
   }
 
-  function openPayme(url) {
-    if (tg && typeof tg.openLink === "function") {
-      try {
-        tg.openLink(url, { try_instant_view: false });
-        return;
-      } catch (error) {
-        tg.openLink(url);
-        return;
-      }
+  function paymeAppUrl(data) {
+    if (!data) {
+      return "";
     }
 
-    window.location.assign(url);
+    if (tg && tg.platform === "android" && data.intent_url) {
+      return data.intent_url;
+    }
+
+    return data.app_url || "";
+  }
+
+  function openPaymeApp(url) {
+    const link = document.createElement("a");
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   }
 
   async function checkout() {
@@ -322,9 +329,9 @@
       return;
     }
 
-    const readyUrl = state.checkoutUrls[plan.id];
-    if (readyUrl) {
-      openPayme(readyUrl);
+    const cached = paymeAppUrl(state.payLinks && state.payLinks[plan.id]);
+    if (cached) {
+      openPaymeApp(cached);
       return;
     }
 
@@ -343,12 +350,15 @@
         body: JSON.stringify({ plan_id: plan.id })
       });
 
-      if (!data.url) {
+      const appUrl = paymeAppUrl(data);
+
+      if (!appUrl) {
         throw new Error("no_checkout_url");
       }
 
-      state.checkoutUrls[plan.id] = data.url;
-      openPayme(data.url);
+      state.payLinks = state.payLinks || {};
+      state.payLinks[plan.id] = data;
+      openPaymeApp(appUrl);
     } catch (error) {
       const reason = error && error.message ? String(error.message) : "";
       if (reason === "payment_not_configured") {
