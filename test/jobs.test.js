@@ -95,7 +95,7 @@ test("Qo'lda ochilgan obuna qayta deployda ikki qilmaydi", async (t) => {
     pool: env.pool,
     notifier: env.notifier
   });
-  assert.equal(first.granted, 2);
+  assert.equal(first.granted, 3);
 
   const sub = await env.pool.query(
     `SELECT * FROM subscriptions WHERE telegram_user_id = '2096644395'`
@@ -108,7 +108,7 @@ test("Qo'lda ochilgan obuna qayta deployda ikki qilmaydi", async (t) => {
     notifier: env.notifier
   });
   assert.equal(second.granted, 0);
-  assert.equal(second.skipped, 2);
+  assert.equal(second.skipped, 3);
 
   const again = await env.pool.query(
     `SELECT * FROM subscriptions WHERE telegram_user_id = '2096644395'`

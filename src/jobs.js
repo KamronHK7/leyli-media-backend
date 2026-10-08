@@ -61,7 +61,8 @@ async function recoverMissedPayments({ pool, notifier }) {
 */
 const MANUAL_GRANTS = [
   { token: "20261008-2096644395-month_1", userId: "2096644395", planId: "month_1", firstName: "mijoz" },
-  { token: "20261008-8760950649-month_1", userId: "8760950649", planId: "month_1", firstName: "mijoz" }
+  { token: "20261008-8760950649-month_1", userId: "8760950649", planId: "month_1", firstName: "mijoz" },
+  { token: "20261008-58978245-month_1", userId: "58978245", planId: "month_1", firstName: "Ruslan" }
 ];
 
 async function applyManualGrants({ pool, notifier }) {
