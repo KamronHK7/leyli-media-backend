@@ -1,9 +1,7 @@
 const { Bot, InlineKeyboard, webhookCallback } = require("grammy");
 
-const { PLANS, getPlanById } = require("./config");
 const { upsertUser } = require("./db");
 const { getSubscription, isActive } = require("./subscriptions");
-const { createApproval, applyApproval, parseStaffGrantText } = require("./approvals");
 
 const INVITE_LINK_TTL_SEC = 24 * 60 * 60;
 
@@ -14,13 +12,6 @@ function formatDate(value) {
     month: "2-digit",
     year: "numeric"
   });
-}
-
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
 }
 
 /* Bot tokeni bo'lmaganda ishlatiladi (masalan Payme sandbox testi paytida) */
@@ -78,69 +69,6 @@ function createTelegram({ pool, config }) {
     }
 
     return keyboard;
-  }
-
-  function staffIds() {
-    const ids = new Set(config.adminTelegramIds || []);
-
-    if (config.ownerTelegramId) {
-      ids.add(String(config.ownerTelegramId));
-    }
-
-    return ids;
-  }
-
-  function isStaff(userId) {
-    return staffIds().has(String(userId));
-  }
-
-  function planChoiceKeyboard(userId) {
-    const keyboard = new InlineKeyboard();
-
-    for (const plan of PLANS) {
-      keyboard
-        .text(`${plan.title} — ${plan.priceSom} so'm`, `grant:${userId}:${plan.id}`)
-        .row();
-    }
-
-    return keyboard;
-  }
-
-  async function askPlanForUser(ctx, userId) {
-    await ctx.reply(
-      `User ID: <code>${escapeHtml(userId)}</code>\nChekdagi summaga qarab tarifni tanlang:`,
-      { parse_mode: "HTML", reply_markup: planChoiceKeyboard(userId) }
-    );
-  }
-
-  async function sendInviteForPaidUser(ctx, rawUserId, plan) {
-    const userId = String(rawUserId || "").trim();
-    const selected = plan || getPlanById("month_1");
-
-    if (!/^\d{3,20}$/.test(userId) || !selected) {
-      await ctx.reply(
-        "Payme chekdan <b>ID пользователя</b> ni yuboring.\nMasalan: <code>6336262541</code>",
-        { parse_mode: "HTML" }
-      );
-      return;
-    }
-
-    const approval = await createApproval(pool, {
-      telegramUserId: userId,
-      amountSom: selected.priceSom,
-      source: "owner"
-    });
-
-    try {
-      const result = await applyApproval({ pool, notifier, approval });
-      await ctx.reply(
-        `✅ Havola yuborildi.\nUser ID: <code>${escapeHtml(userId)}</code>\nObuna: <b>${escapeHtml(selected.title)}</b> — ${formatDate(result.expiresAt)} gacha.`,
-        { parse_mode: "HTML" }
-      );
-    } catch (error) {
-      console.error("❌ OWNER GRANT:", error.message);
-      await ctx.reply("Havolani yuborib bo‘lmadi: " + error.message);
-    }
   }
 
   async function safeSend(userId, text, extra = {}) {
@@ -279,58 +207,11 @@ function createTelegram({ pool, config }) {
       ? `\n\n✅ Obunangiz <b>${formatDate(subscription.expires_at)}</b> gacha faol.`
       : "";
 
-    const ownerHint = isStaff(ctx.from.id)
-      ? "\n\nTo‘lovchi <b>User ID</b> ni yuboring, keyin 1 oylik yoki 6 oylikni tanlang."
-      : "";
-
     await ctx.reply(
       `✨ Assalomu alaykum! LEYLI MEDIA Premium botga xush kelibsiz. Bu yerda yopiq kanal obunasini tez va oson xarid qilishingiz mumkin.` +
-        status +
-        ownerHint,
+        status,
       { parse_mode: "HTML", reply_markup: mainKeyboard() }
     );
-  });
-
-  bot.command("paid", async (ctx) => {
-    if (!isStaff(ctx.from.id)) {
-      return;
-    }
-
-    const grant = parseStaffGrantText(String(ctx.match || "").trim());
-
-    if (!grant) {
-      await ctx.reply(
-        "Payme chekdan <b>ID пользователя</b> ni yuboring.\nMasalan: <code>6336262541</code>",
-        { parse_mode: "HTML" }
-      );
-      return;
-    }
-
-    if (!grant.plan) {
-      await askPlanForUser(ctx, grant.userId);
-      return;
-    }
-
-    await sendInviteForPaidUser(ctx, grant.userId, grant.plan);
-  });
-
-  bot.callbackQuery(/^grant:(\d{3,20}):(month_1|month_6)$/, async (ctx) => {
-    if (!isStaff(ctx.from.id)) {
-      await ctx.answerCallbackQuery();
-      return;
-    }
-
-    const userId = ctx.match[1];
-    const plan = getPlanById(ctx.match[2]);
-
-    await ctx.answerCallbackQuery({ text: plan ? plan.title : "" });
-    await sendInviteForPaidUser(ctx, userId, plan);
-
-    try {
-      await ctx.editMessageReplyMarkup({ reply_markup: { inline_keyboard: [] } });
-    } catch (error) {
-      /* xabar allaqachon o'zgargan bo'lishi mumkin */
-    }
   });
 
   bot.callbackQuery("check", async (ctx) => {
@@ -378,18 +259,6 @@ function createTelegram({ pool, config }) {
       return;
     }
 
-    const grant = isStaff(ctx.from.id) ? parseStaffGrantText(text) : null;
-
-    if (grant) {
-      if (!grant.plan) {
-        await askPlanForUser(ctx, grant.userId);
-        return;
-      }
-
-      await sendInviteForPaidUser(ctx, grant.userId, grant.plan);
-      return;
-    }
-
     await ctx.reply("Quyidagi tugmalardan foydalaning 👇", {
       reply_markup: mainKeyboard()
     });
@@ -420,10 +289,7 @@ function createTelegram({ pool, config }) {
 
     if (config.ownerTelegramId) {
       await api.setMyCommands(
-        [
-          { command: "start", description: "Boshlash" },
-          { command: "paid", description: "User ID va tarif" }
-        ],
+        [{ command: "start", description: "Boshlash" }],
         { scope: { type: "chat", chat_id: Number(config.ownerTelegramId) } }
       );
     }
