@@ -61,62 +61,71 @@ function buildCheckoutUrl({ config, userId, plan }) {
   return `${checkoutAction(config)}/${encodeCheckoutToken(parts.join(";"))}`;
 }
 
-function paymeAppLinkFromHtml(html) {
-  const match = String(html).match(/paycom:\/\/checkout\.paycom\.uz\/[a-f0-9]{24}/i);
-  return match ? match[0] : null;
-}
+function paymeLaunchFromHtml(html) {
+  const source = String(html);
+  const found = source.match(/paycom:\/\/checkout\.paycom\.uz\/([a-f0-9]{24})/i);
 
-async function resolvePaymeAppUrl(checkoutUrl) {
-  try {
-    const response = await fetch(checkoutUrl, { signal: AbortSignal.timeout(8000) });
-    const html = await response.text();
-    return paymeAppLinkFromHtml(html) || checkoutUrl;
-  } catch (error) {
-    console.error("PAYME CHECKOUT:", error.message);
-    return checkoutUrl;
+  if (!found) {
+    return null;
   }
+
+  const id = found[1];
+  const actionMatch = source.match(/<form[^>]*\saction="([^"]+)"/i);
+  const receiptMatch = source.match(/name="receipt"\s+value="([^"]*)"/i);
+  const action = actionMatch
+    ? actionMatch[1].replace(/&#x3D;/gi, "=").replace(/&amp;/g, "&")
+    : `https://payme.uz/quick/checkout/${id}/start?back=null&timeout=15000&lang=uz`;
+
+  return {
+    appLink: found[0],
+    id,
+    action,
+    receipt: receiptMatch ? receiptMatch[1] : ""
+  };
 }
 
-function payFormPage({ merchant, amount, userId, callback, action }) {
-  const m = escapeHtml(merchant);
-  const a = escapeHtml(amount);
-  const uid = escapeHtml(userId);
-  const c = escapeHtml(callback);
+async function resolvePaymeLaunch(checkoutUrl) {
+  const response = await fetch(checkoutUrl, { signal: AbortSignal.timeout(8000) });
+  const html = await response.text();
+  return paymeLaunchFromHtml(html);
+}
+
+function payLaunchPage({ appLink, id, action, receipt }) {
+  const link = JSON.stringify(appLink);
+  const intent = JSON.stringify(
+    `intent://checkout.paycom.uz/${id}#Intent;scheme=paycom;package=uz.dida.payme;end`
+  );
   const dest = escapeHtml(action);
+  const cheque = escapeHtml(receipt || "");
 
   return `<!DOCTYPE html>
 <html lang="uz">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="referrer" content="origin">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Payme</title>
-  <style>
-    html, body { margin: 0; min-height: 100%; background: #1c1c1e; color: #fff;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    .wrap { min-height: 100vh; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; padding: 24px; text-align: center; gap: 12px; }
-    p { color: #8e8e93; margin: 0; }
-    button { margin-top: 8px; border: 0; border-radius: 12px; padding: 14px 22px;
-      background: #14b8a6; color: #fff; font-size: 16px; font-weight: 600; }
-  </style>
 </head>
 <body>
-  <div class="wrap">
-    <p>Payme to‘lov oynasi ochilmoqda…</p>
-    <form id="payme" method="POST" action="${dest}">
-      <input type="hidden" name="merchant" value="${m}">
-      <input type="hidden" name="amount" value="${a}">
-      <input type="hidden" name="account[user_id]" value="${uid}">
-      <input type="hidden" name="lang" value="uz">
-      <input type="hidden" name="callback" value="${c}">
-      <input type="hidden" name="callback_timeout" value="15000">
-      <input type="hidden" name="description[uz]" value="LEYLI MEDIA">
-      <input type="hidden" name="description[ru]" value="LEYLI MEDIA">
-      <button type="submit">Payme orqali to‘lash</button>
-    </form>
-  </div>
-  <script>document.getElementById("payme").submit();</script>
+  <p>Payme ilovasida to‘lov ochilmoqda…</p>
+  <form name="redirect" method="POST" action="${dest}">
+    <input type="hidden" name="receipt" value="${cheque}">
+    <input type="hidden" name="lang" value="uz">
+    <input type="hidden" name="callback" value="">
+    <button type="submit">To‘lash</button>
+  </form>
+  <script>
+    (function () {
+      var agent = (navigator.userAgent || "").toLowerCase();
+      var appLink = ${link};
+      var intent = ${intent};
+      document.location = agent.indexOf("android") !== -1 ? intent : appLink;
+      setTimeout(function () {
+        if (document.visibilityState === "visible" && document.forms.redirect) {
+          document.forms.redirect.submit();
+        }
+      }, 1200);
+    })();
+  </script>
 </body>
 </html>`;
 }
@@ -124,11 +133,11 @@ function payFormPage({ merchant, amount, userId, callback, action }) {
 module.exports = {
   buildCheckoutUrl,
   buildPayFormUrl,
-  paymeAppLinkFromHtml,
-  resolvePaymeAppUrl,
+  paymeLaunchFromHtml,
+  resolvePaymeLaunch,
+  payLaunchPage,
   checkoutAction,
   checkoutReturnUrl,
-  payFormPage,
   payerDisplayName,
   payerUsername,
   decodeCheckoutToken

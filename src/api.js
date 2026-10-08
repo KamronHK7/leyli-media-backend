@@ -4,7 +4,7 @@ const { validateInitData } = require("./telegramAuth");
 const { upsertUser } = require("./db");
 const { PLANS, publicPlan, getPlanById } = require("./config");
 const { getSubscription, isActive } = require("./subscriptions");
-const { buildCheckoutUrl, buildPayFormUrl, resolvePaymeAppUrl } = require("./paymeCheckout");
+const { buildPayFormUrl } = require("./paymeCheckout");
 
 const LINK_COOLDOWN_MS = 20 * 1000;
 
@@ -105,14 +105,14 @@ function createApiRouter({ pool, config, notifier }) {
 
       await upsertUser(pool, req.tgUser);
 
-      const checkoutUrl = buildCheckoutUrl({
-        config,
-        userId: String(req.tgUser.id),
-        plan
+      res.json({
+        ok: true,
+        url: buildPayFormUrl({
+          config,
+          userId: String(req.tgUser.id),
+          plan
+        })
       });
-      const url = await resolvePaymeAppUrl(checkoutUrl);
-
-      res.json({ ok: true, url });
     })
   );
 

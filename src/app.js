@@ -7,7 +7,7 @@ const { createPaymeRouter, rpcError, MESSAGES } = require("./payme");
 const { createApiRouter } = require("./api");
 const { runExpiryJob } = require("./jobs");
 const { grantSubscription } = require("./subscriptions");
-const { buildCheckoutUrl } = require("./paymeCheckout");
+const { buildCheckoutUrl, resolvePaymeLaunch, payLaunchPage } = require("./paymeCheckout");
 
 function cronAuthorized(req, config) {
   const given = String(req.query.secret || "");
@@ -158,10 +158,10 @@ function createApp({ pool, config, notifier, webhookHandler }) {
   });
 
   /*
-    Web forma checkout.paycom.uz da [object Object] beradi.
-    /pay to'g'ridan-to'g'ri ilova cheki havolasiga yo'naltiradi.
+    checkout.paycom.uz havolasini Payme ilovasi bosh sahifada ochadi.
+    /pay chekni yaratadi va brauzerdan paycom:// chekiga o'tkazadi.
   */
-  app.get("/pay", (req, res) => {
+  app.get("/pay", async (req, res) => {
     const amount = String(req.query.a || "");
     const userId = String(req.query.uid || "");
     const plan = getPlanByAmount(amount);
@@ -171,14 +171,26 @@ function createApp({ pool, config, notifier, webhookHandler }) {
       return;
     }
 
-    res.redirect(
-      302,
-      buildCheckoutUrl({
-        config,
-        userId,
-        plan
-      })
-    );
+    try {
+      const launch = await resolvePaymeLaunch(
+        buildCheckoutUrl({
+          config,
+          userId,
+          plan
+        })
+      );
+
+      if (!launch) {
+        res.status(502).type("html").send("<p>Payme chekini ochib bo‘lmadi.</p>");
+        return;
+      }
+
+      res.setHeader("Cache-Control", "no-store");
+      res.status(200).type("html").send(payLaunchPage(launch));
+    } catch (error) {
+      console.error("❌ PAY:", error.message);
+      res.status(502).type("html").send("<p>Payme chekini ochib bo‘lmadi.</p>");
+    }
   });
 
   /* Mini app (statik fayllar) */
