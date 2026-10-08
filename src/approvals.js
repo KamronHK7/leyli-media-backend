@@ -9,6 +9,46 @@ function planFromAmountSom(amountSom) {
   return getPlanByAmount(amountTiyin({ priceSom: Number(amountSom) })) || getPlanById("month_1");
 }
 
+function parsePlanToken(token) {
+  const raw = String(token || "").trim().toLowerCase();
+
+  if (!raw) {
+    return null;
+  }
+
+  const compact = raw.replace(/[^a-z0-9]/g, "");
+
+  if (compact === "6" || compact === "6oy" || compact === "month6") {
+    return getPlanById("month_6");
+  }
+
+  if (compact === "1" || compact === "1oy" || compact === "month1") {
+    return getPlanById("month_1");
+  }
+
+  if (/^\d+$/.test(raw)) {
+    return getPlanByAmount(amountTiyin({ priceSom: Number(raw) }));
+  }
+
+  return getPlanById(raw) || getPlanById(compact);
+}
+
+function parseStaffGrantText(text) {
+  const parts = String(text || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!parts.length || !/^\d{3,20}$/.test(parts[0])) {
+    return null;
+  }
+
+  return {
+    userId: parts[0],
+    plan: parts[1] ? parsePlanToken(parts[1]) : null
+  };
+}
+
 async function findPendingApproval(pool, telegramUserId) {
   const result = await pool.query(
     `
@@ -127,6 +167,8 @@ async function rejectApproval(pool, approval) {
 
 module.exports = {
   planFromAmountSom,
+  parsePlanToken,
+  parseStaffGrantText,
   findPendingApproval,
   getApproval,
   createApproval,

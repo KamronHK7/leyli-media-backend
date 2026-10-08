@@ -6,7 +6,8 @@ const {
   createApproval,
   applyApproval,
   getApproval,
-  planFromAmountSom
+  planFromAmountSom,
+  parseStaffGrantText
 } = require("../src/approvals");
 const { DAY_MS, grantSubscription, getSubscription } = require("../src/subscriptions");
 const { getPlanById } = require("../src/config");
@@ -62,6 +63,9 @@ test("6 oylik summa month_6 tarifini ochadi, 1 oylikdan keyin muddatni uzaytirad
   t.after(() => env.server.close());
 
   assert.equal(planFromAmountSom(109000).id, "month_6");
+  assert.equal(parseStaffGrantText("6336262541").plan, null);
+  assert.equal(parseStaffGrantText("6336262541 6").plan.id, "month_6");
+  assert.equal(parseStaffGrantText("6336262541 109000").plan.id, "month_6");
 
   const month1 = await createApproval(env.pool, {
     telegramUserId: "7000000001",
