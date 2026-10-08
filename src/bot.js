@@ -30,7 +30,6 @@ function createNoopNotifier() {
 
   return {
     enabled: false,
-    sendPaymeLink: log("sendPaymeLink"),
     sendAccessLink: log("sendAccessLink"),
     sendPaymentConfirmed: log("sendPaymentConfirmed"),
     removeFromChannel: log("removeFromChannel"),
@@ -227,17 +226,6 @@ function createTelegram({ pool, config }) {
       );
 
       return inviteLink;
-    },
-
-    async sendPaymeLink(userId, url, plan) {
-      const title = escapeHtml(plan?.title || "Obuna");
-      const price = plan?.priceSom ? ` — ${plan.priceSom} so'm` : "";
-
-      return safeSend(
-        userId,
-        `💳 <b>${title}</b>${price}\nPayme ilovasida to‘lov oynasini ochish uchun tugmani bosing.\nTo‘lov tasdiqlangach obuna shu chatga ulanadi.`,
-        { reply_markup: new InlineKeyboard().url("Payme orqali to‘lash", url) }
-      );
     },
 
     async sendPaymentConfirmed(userId, expiresAt) {

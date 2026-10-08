@@ -293,8 +293,13 @@
   }
 
   function openPayme(url) {
-    // checkout.paycom.uz/{chek} — Payme ilovasi to'lov oynasini ochadi.
-    // O'z saytimizdagi forma brauzerda [object Object] beradi.
+    // Payme o'z sahifasida chekni shu sxema bilan ochadi.
+    // https://checkout.paycom.uz/{base64} ilovani bosh sahifada qoldiradi.
+    if (String(url).startsWith("paycom://")) {
+      window.location.href = url;
+      return;
+    }
+
     if (tg && typeof tg.openLink === "function") {
       try {
         tg.openLink(url, { try_instant_view: false });

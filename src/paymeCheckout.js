@@ -58,11 +58,23 @@ function buildCheckoutUrl({ config, userId, plan }) {
     "l=uz"
   ];
 
-  if (config.publicUrl) {
-    parts.push(`c=${config.publicUrl}/paid`, "ct=15000");
-  }
-
   return `${checkoutAction(config)}/${encodeCheckoutToken(parts.join(";"))}`;
+}
+
+function paymeAppLinkFromHtml(html) {
+  const match = String(html).match(/paycom:\/\/checkout\.paycom\.uz\/[a-f0-9]{24}/i);
+  return match ? match[0] : null;
+}
+
+async function resolvePaymeAppUrl(checkoutUrl) {
+  try {
+    const response = await fetch(checkoutUrl, { signal: AbortSignal.timeout(8000) });
+    const html = await response.text();
+    return paymeAppLinkFromHtml(html) || checkoutUrl;
+  } catch (error) {
+    console.error("PAYME CHECKOUT:", error.message);
+    return checkoutUrl;
+  }
 }
 
 function payFormPage({ merchant, amount, userId, callback, action }) {
@@ -112,6 +124,8 @@ function payFormPage({ merchant, amount, userId, callback, action }) {
 module.exports = {
   buildCheckoutUrl,
   buildPayFormUrl,
+  paymeAppLinkFromHtml,
+  resolvePaymeAppUrl,
   checkoutAction,
   checkoutReturnUrl,
   payFormPage,

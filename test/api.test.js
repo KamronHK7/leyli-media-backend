@@ -2,7 +2,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 
 const { createTestEnv, signInitData } = require("./helpers");
-const { decodeCheckoutToken } = require("../src/paymeCheckout");
+const { decodeCheckoutToken, paymeAppLinkFromHtml } = require("../src/paymeCheckout");
 
 test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasaydi", async (t) => {
   const env = await createTestEnv({
@@ -80,4 +80,10 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
 
   res = await fetch(`${env.url}/api/me`);
   assert.equal(res.status, 401);
+
+  assert.equal(
+    paymeAppLinkFromHtml("document.location = 'paycom://checkout.paycom.uz/6ac78d6f5baac87e89d2bee2';"),
+    "paycom://checkout.paycom.uz/6ac78d6f5baac87e89d2bee2"
+  );
+  assert.equal(paymeAppLinkFromHtml("<p>chek yo'q</p>"), null);
 });
