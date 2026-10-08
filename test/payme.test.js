@@ -59,7 +59,7 @@ test("Payme Merchant API sandbox ssenariylari", async (t) => {
     { amount: 23232222, account: { user_id: "999999999" } },
     paymeAuth("Paycom", "sandbox_key_value")
   );
-  assert.equal(r.body.error.code, -32504);
+  assert.equal(r.body.error.code, -31050);
 
   r = await rpc(
     sandbox.url,

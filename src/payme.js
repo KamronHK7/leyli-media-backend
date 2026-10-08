@@ -133,12 +133,11 @@ function createPaymeRouter({ pool, config, hooks = {} }) {
 
     console.log("📥 PAYME HIT", req.body?.method || "no-method");
 
-    const isSandbox =
+    const headerSandbox =
       String(req.headers["test-operation"] || "").toLowerCase() === "paycom";
-    const expectedKey = isSandbox ? liveKeys.sandbox : liveKeys.production;
 
-    if (!config.paymeLogin || !expectedKey) {
-      console.error("❌ PAYME_LOGIN yoki PAYME_KEY o'rnatilmagan");
+    if (!config.paymeLogin) {
+      console.error("❌ PAYME_LOGIN o'rnatilmagan");
       return reject();
     }
 
@@ -166,12 +165,20 @@ function createPaymeRouter({ pool, config, hooks = {} }) {
     const login = decoded.substring(0, separator);
     const password = decoded.substring(separator + 1);
 
-    if (!safeEqual(login, config.paymeLogin) || !safeEqual(password, expectedKey)) {
+    if (!safeEqual(login, config.paymeLogin)) {
       console.error("❌ PAYME AUTH: login/kalit mos emas");
       return reject();
     }
 
-    req.paymeSandbox = isSandbox;
+    const matchesProd = Boolean(liveKeys.production) && safeEqual(password, liveKeys.production);
+    const matchesTest = Boolean(liveKeys.sandbox) && safeEqual(password, liveKeys.sandbox);
+
+    if (!matchesProd && !matchesTest) {
+      console.error("❌ PAYME AUTH: login/kalit mos emas");
+      return reject();
+    }
+
+    req.paymeSandbox = headerSandbox || matchesTest || Boolean(config.paymeTestMode);
     next();
   }
 
