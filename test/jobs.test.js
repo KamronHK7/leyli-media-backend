@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const { createTestEnv } = require("./helpers");
 const { grantSubscription } = require("../src/subscriptions");
 const { getPlanById } = require("../src/config");
-const { runExpiryJob, recoverMissedPayments } = require("../src/jobs");
+const { runExpiryJob, recoverMissedPayments, applyManualGrants } = require("../src/jobs");
 
 test("Muddat tugagach kanaldan chiqarish va eslatma yuborish", async (t) => {
   const env = await createTestEnv();
@@ -85,4 +85,33 @@ test("O'tib ketgan to'lovni server ishga tushganda tiklash", async (t) => {
   });
   assert.equal(second.granted, 0);
   assert.equal(second.skipped, 5);
+});
+
+test("Qo'lda ochilgan obuna qayta deployda ikki qilmaydi", async (t) => {
+  const env = await createTestEnv();
+  t.after(() => env.server.close());
+
+  const first = await applyManualGrants({
+    pool: env.pool,
+    notifier: env.notifier
+  });
+  assert.equal(first.granted, 1);
+
+  const sub = await env.pool.query(
+    `SELECT * FROM subscriptions WHERE telegram_user_id = '2096644395'`
+  );
+  assert.equal(sub.rows.length, 1);
+  const firstExpiry = new Date(sub.rows[0].expires_at).getTime();
+
+  const second = await applyManualGrants({
+    pool: env.pool,
+    notifier: env.notifier
+  });
+  assert.equal(second.granted, 0);
+  assert.equal(second.skipped, 1);
+
+  const again = await env.pool.query(
+    `SELECT * FROM subscriptions WHERE telegram_user_id = '2096644395'`
+  );
+  assert.equal(new Date(again.rows[0].expires_at).getTime(), firstExpiry);
 });

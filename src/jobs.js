@@ -55,6 +55,66 @@ async function recoverMissedPayments({ pool, notifier }) {
 }
 
 /*
+  Jonibek Merchant API ni tuzatmaguncha: Kamron User ID + tarif yuboradi,
+  shu ro'yxatga qo'shiladi. token takrorlanmasa, qayta deploy qo'shimcha
+  oy bermaydi. Faol obuna ustiga yangi muddat qo'shiladi.
+*/
+const MANUAL_GRANTS = [
+  { token: "20261008-2096644395-month_1", userId: "2096644395", planId: "month_1", firstName: "mijoz" }
+];
+
+async function applyManualGrants({ pool, notifier }) {
+  const summary = { granted: 0, skipped: 0, errors: 0 };
+
+  for (const item of MANUAL_GRANTS) {
+    try {
+      const plan = getPlanById(item.planId);
+
+      if (!plan || !item.token) {
+        continue;
+      }
+
+      const existing = await pool.query(
+        `SELECT token FROM manual_grants WHERE token = $1 LIMIT 1`,
+        [item.token]
+      );
+
+      if (existing.rows[0]) {
+        summary.skipped += 1;
+        continue;
+      }
+
+      await pool.query(
+        `
+          INSERT INTO manual_grants (token, telegram_user_id, plan_id)
+          VALUES ($1, $2, $3)
+        `,
+        [item.token, item.userId, plan.id]
+      );
+
+      await pool.query(
+        `
+          INSERT INTO telegram_users (telegram_user_id, first_name)
+          VALUES ($1, $2)
+          ON CONFLICT (telegram_user_id) DO NOTHING
+        `,
+        [item.userId, item.firstName || "mijoz"]
+      );
+
+      const expiresAt = await grantSubscription(pool, item.userId, plan);
+      console.log("🔓 MANUAL:", item.userId, plan.id, expiresAt.toISOString());
+      await notifier.sendPaymentConfirmed(item.userId, expiresAt);
+      summary.granted += 1;
+    } catch (error) {
+      summary.errors += 1;
+      console.error("❌ MANUAL:", item.userId, error.message);
+    }
+  }
+
+  return summary;
+}
+
+/*
   Muddati tugagan obunalarni kanaldan chiqaradi va tugashiga yaqin
   foydalanuvchilarga eslatma yuboradi.
   Har bir foydalanuvchi alohida ishlanadi: bittasida xato bo'lsa, qolganlari to'xtamaydi.
@@ -122,4 +182,4 @@ async function runExpiryJob({ pool, notifier, config, now = new Date() }) {
   return summary;
 }
 
-module.exports = { runExpiryJob, recoverMissedPayments };
+module.exports = { runExpiryJob, recoverMissedPayments, applyManualGrants };

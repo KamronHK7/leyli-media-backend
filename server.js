@@ -2,7 +2,7 @@ const { loadConfig } = require("./src/config");
 const { createPool, initDatabase } = require("./src/db");
 const { createTelegram } = require("./src/bot");
 const { createApp } = require("./src/app");
-const { runExpiryJob, recoverMissedPayments } = require("./src/jobs");
+const { runExpiryJob, recoverMissedPayments, applyManualGrants } = require("./src/jobs");
 
 const EXPIRY_JOB_INTERVAL_MS = 10 * 60 * 1000;
 
@@ -32,6 +32,7 @@ async function start() {
         console.error("❌ Telegram sozlanmadi:", error.message);
       })
       .then(() => recoverMissedPayments({ pool, notifier: telegram.notifier }))
+      .then(() => applyManualGrants({ pool, notifier: telegram.notifier }))
       .catch((error) => {
         console.error("❌ RECOVER:", error.message);
       });
