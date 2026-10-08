@@ -195,7 +195,11 @@ function createApp({ pool, config, notifier, webhookHandler }) {
       res.setHeader("Location", target);
       res.end();
     } catch (error) {
-      console.error("❌ PAY:", error.message);
+      console.error("❌ PAY:", error.paymeStatus || "", error.paymeTitle || error.message);
+      res.setHeader(
+        "X-Payme-Title",
+        encodeURIComponent(String(error.paymeTitle || error.message || "")).slice(0, 180)
+      );
       res.status(502).type("html").send("<p>Payme chekini ochib bo‘lmadi.</p>");
     }
   });

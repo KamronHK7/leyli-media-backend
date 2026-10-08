@@ -104,7 +104,10 @@ async function resolvePaymeLaunch(checkoutUrl) {
 
   if (!launch) {
     const title = (html.match(/<title>([^<]*)<\/title>/i) || [])[1] || "";
-    console.error("PAYME CHECKOUT: chek topilmadi", response.status, title.slice(0, 80));
+    const error = new Error("chek topilmadi");
+    error.paymeStatus = response.status;
+    error.paymeTitle = title.slice(0, 120);
+    throw error;
   }
 
   return launch;
