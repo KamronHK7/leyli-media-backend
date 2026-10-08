@@ -167,19 +167,10 @@ function createApp({ pool, config, notifier, webhookHandler }) {
     res.setHeader("Referrer-Policy", "origin");
     const amount = String(req.query.a || "");
     const userId = String(req.query.uid || "");
-    const fullName = String(req.query.n || "").trim();
-    const username = String(req.query.u || "").trim();
     const merchant = config.paymeMerchantId || "";
     const callback = config.publicUrl ? `${config.publicUrl}/paid` : "";
 
-    if (
-      !merchant ||
-      !/^\d{3,12}$/.test(amount) ||
-      !/^\d{1,20}$/.test(userId) ||
-      !fullName ||
-      fullName.length > 80 ||
-      username.length > 33
-    ) {
+    if (!merchant || !/^\d{3,12}$/.test(amount) || !/^\d{1,20}$/.test(userId)) {
       res.status(400).type("html").send("<p>To‘lov parametrlari noto‘g‘ri.</p>");
       return;
     }
@@ -192,8 +183,6 @@ function createApp({ pool, config, notifier, webhookHandler }) {
           merchant,
           amount,
           userId,
-          fullName,
-          username,
           callback,
           action: checkoutAction(config)
         })

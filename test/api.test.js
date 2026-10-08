@@ -46,26 +46,22 @@ test("Mini app API Telegram initData ni tekshiradi va checkout havolasini yasayd
   const decoded = decodeCheckoutToken(body.url);
   assert.match(decoded, /(?:^|;)m=merchant-id(?:;|$)/);
   assert.match(decoded, /(?:^|;)ac\.user_id=777(?:;|$)/);
-  assert.match(decoded, /(?:^|;)ac\.full_name=Kamronbek Xoliqov(?:;|$)/);
-  assert.match(decoded, /(?:^|;)ac\.username=@kamron(?:;|$)/);
-  assert.match(decoded, /(?:^|;)ac\.phone_number=@kamron(?:;|$)/);
-  assert.equal(decoded.includes("998900000000"), false);
+  assert.equal(decoded.includes("ac.full_name"), false);
+  assert.equal(decoded.includes("ac.username"), false);
+  assert.equal(decoded.includes("ac.phone_number"), false);
   assert.match(decoded, /(?:^|;)a=2000000(?:;|$)/);
   assert.equal(decoded.includes("?"), false);
   assert.equal(body.url.includes("payme.uz/fallback"), false);
 
-  res = await fetch(
-    `${env.url}/pay?a=2000000&uid=777&n=Kamronbek%20Xoliqov&u=%40kamron`
-  );
+  res = await fetch(`${env.url}/pay?a=2000000&uid=777`);
   assert.equal(res.status, 200);
   const html = await res.text();
   assert.match(html, /name="merchant" value="merchant-id"/);
   assert.match(html, /name="amount" value="2000000"/);
   assert.match(html, /name="account\[user_id\]" value="777"/);
-  assert.match(html, /name="account\[full_name\]" value="Kamronbek Xoliqov"/);
-  assert.match(html, /name="account\[username\]" value="@kamron"/);
-  assert.match(html, /name="account\[phone_number\]" value="@kamron"/);
-  assert.equal(html.includes("998900000000"), false);
+  assert.equal(html.includes("account[full_name]"), false);
+  assert.equal(html.includes("account[username]"), false);
+  assert.equal(html.includes("account[phone_number]"), false);
   assert.match(html, /action="https:\/\/checkout\.paycom\.uz"/);
 
   res = await fetch(`${env.url}/api/checkout`, {

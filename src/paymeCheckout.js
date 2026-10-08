@@ -26,12 +26,10 @@ function payerUsername(user) {
   return raw ? "@" + raw : "";
 }
 
-function buildPayFormUrl({ config, userId, plan, fullName, username }) {
+function buildPayFormUrl({ config, userId, plan }) {
   const params = new URLSearchParams({
     a: String(amountTiyin(plan)),
-    uid: String(userId),
-    n: fullName,
-    u: username
+    uid: String(userId)
   });
   const base = config.publicUrl || "";
   return `${base}/pay?${params}`;
@@ -47,19 +45,13 @@ function decodeCheckoutToken(url) {
   return Buffer.from(token, "base64").toString("utf8");
 }
 
-function buildCheckoutUrl({ config, userId, plan, fullName, username }) {
+function buildCheckoutUrl({ config, userId, plan }) {
   const parts = [
     `m=${config.paymeMerchantId}`,
     `ac.user_id=${userId}`,
-    `ac.full_name=${fullName}`
+    `a=${amountTiyin(plan)}`,
+    "l=uz"
   ];
-
-  if (username) {
-    parts.push(`ac.username=${username}`);
-    parts.push(`ac.phone_number=${username}`);
-  }
-
-  parts.push(`a=${amountTiyin(plan)}`, "l=uz");
 
   if (config.publicUrl) {
     parts.push(`c=${config.publicUrl}/paid`, "ct=15000");
@@ -68,12 +60,10 @@ function buildCheckoutUrl({ config, userId, plan, fullName, username }) {
   return `${checkoutAction(config)}/${encodeCheckoutToken(parts.join(";"))}`;
 }
 
-function payFormPage({ merchant, amount, userId, fullName, username, callback, action }) {
+function payFormPage({ merchant, amount, userId, callback, action }) {
   const m = escapeHtml(merchant);
   const a = escapeHtml(amount);
   const uid = escapeHtml(userId);
-  const name = escapeHtml(fullName);
-  const uname = escapeHtml(username);
   const c = escapeHtml(callback);
   const dest = escapeHtml(action);
 
@@ -101,9 +91,6 @@ function payFormPage({ merchant, amount, userId, fullName, username, callback, a
       <input type="hidden" name="merchant" value="${m}">
       <input type="hidden" name="amount" value="${a}">
       <input type="hidden" name="account[user_id]" value="${uid}">
-      <input type="hidden" name="account[full_name]" value="${name}">
-      <input type="hidden" name="account[username]" value="${uname}">
-      <input type="hidden" name="account[phone_number]" value="${uname}">
       <input type="hidden" name="lang" value="uz">
       <input type="hidden" name="callback" value="${c}">
       <input type="hidden" name="callback_timeout" value="15000">

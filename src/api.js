@@ -4,7 +4,7 @@ const { validateInitData } = require("./telegramAuth");
 const { upsertUser } = require("./db");
 const { PLANS, publicPlan, getPlanById } = require("./config");
 const { getSubscription, isActive } = require("./subscriptions");
-const { buildCheckoutUrl, payerDisplayName, payerUsername } = require("./paymeCheckout");
+const { buildCheckoutUrl } = require("./paymeCheckout");
 
 const LINK_COOLDOWN_MS = 20 * 1000;
 
@@ -54,18 +54,14 @@ function createApiRouter({ pool, config, notifier }) {
 
       const subscription = await getSubscription(pool, req.tgUser.id);
       const userId = String(req.tgUser.id);
-      const fullName = payerDisplayName(req.tgUser);
-      const username = payerUsername(req.tgUser);
       const checkoutUrls = {};
 
-      if (config.paymeMerchantId && fullName) {
+      if (config.paymeMerchantId) {
         for (const plan of PLANS) {
           checkoutUrls[plan.id] = buildCheckoutUrl({
             config,
             userId,
-            plan,
-            fullName,
-            username
+            plan
           });
         }
       }
@@ -107,13 +103,6 @@ function createApiRouter({ pool, config, notifier }) {
         return res.status(400).json({ ok: false, error: "invalid_plan" });
       }
 
-      const fullName = payerDisplayName(req.tgUser);
-      const username = payerUsername(req.tgUser);
-
-      if (!fullName) {
-        return res.status(400).json({ ok: false, error: "unauthorized" });
-      }
-
       await upsertUser(pool, req.tgUser);
 
       res.json({
@@ -121,9 +110,7 @@ function createApiRouter({ pool, config, notifier }) {
         url: buildCheckoutUrl({
           config,
           userId: String(req.tgUser.id),
-          plan,
-          fullName,
-          username
+          plan
         })
       });
     })
