@@ -7,7 +7,7 @@ const { createPaymeRouter, rpcError, MESSAGES } = require("./payme");
 const { createApiRouter } = require("./api");
 const { runExpiryJob } = require("./jobs");
 const { grantSubscription } = require("./subscriptions");
-const { payFormPage, checkoutAction } = require("./paymeCheckout");
+const { payFormPage, checkoutAction, checkoutReturnUrl } = require("./paymeCheckout");
 
 function cronAuthorized(req, config) {
   const given = String(req.query.secret || "");
@@ -168,7 +168,7 @@ function createApp({ pool, config, notifier, webhookHandler }) {
     const amount = String(req.query.a || "");
     const userId = String(req.query.uid || "");
     const merchant = config.paymeMerchantId || "";
-    const callback = config.publicUrl ? `${config.publicUrl}/paid` : "";
+    const callback = checkoutReturnUrl(config);
 
     if (!merchant || !/^\d{3,12}$/.test(amount) || !/^\d{1,20}$/.test(userId)) {
       res.status(400).type("html").send("<p>To‘lov parametrlari noto‘g‘ri.</p>");

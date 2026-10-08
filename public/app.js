@@ -293,7 +293,8 @@
   }
 
   function openPayme(url) {
-    // Payme GET checkout: checkout.paycom.uz/{base64} — ilovada to'lov sahifasi.
+    // checkout.paycom.uz GET Telegramdan Payme ilovasini bosh sahifada ochadi.
+    // Avval o'z /pay sahifamiz: POST bilan web cheque ochiladi.
     if (tg && typeof tg.openLink === "function") {
       try {
         tg.openLink(url, { try_instant_view: false });
@@ -464,6 +465,10 @@
     }
 
     if (!tg || !tg.initData) {
+      if (location.pathname.replace(/\/+$/, "") === "/paid") {
+        location.replace("https://t.me/LeyliMedia_bot");
+        return;
+      }
       show("error");
       return;
     }

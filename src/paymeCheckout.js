@@ -13,6 +13,11 @@ function checkoutAction(config) {
   return config.paymeTestMode ? "https://test.paycom.uz" : "https://checkout.paycom.uz";
 }
 
+function checkoutReturnUrl(config) {
+  const username = String(config.botUsername || "LeyliMedia_bot").replace(/^@/, "");
+  return `https://t.me/${username}`;
+}
+
 function payerDisplayName(user) {
   const first = String(user?.first_name || "").trim();
   const last = String(user?.last_name || "").trim();
@@ -53,9 +58,7 @@ function buildCheckoutUrl({ config, userId, plan }) {
     "l=uz"
   ];
 
-  if (config.publicUrl) {
-    parts.push(`c=${config.publicUrl}/paid`, "ct=15000");
-  }
+  parts.push(`c=${checkoutReturnUrl(config)}`, "ct=15000");
 
   return `${checkoutAction(config)}/${encodeCheckoutToken(parts.join(";"))}`;
 }
@@ -108,6 +111,7 @@ module.exports = {
   buildCheckoutUrl,
   buildPayFormUrl,
   checkoutAction,
+  checkoutReturnUrl,
   payFormPage,
   payerDisplayName,
   payerUsername,
