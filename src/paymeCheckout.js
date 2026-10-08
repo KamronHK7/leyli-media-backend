@@ -50,9 +50,18 @@ function decodeCheckoutToken(url) {
   return Buffer.from(token, "base64").toString("utf8");
 }
 
+const BILLING_MERCHANT_ID = "6abfadbab3bf8da2d9c3742b";
+const WEB_KASSA_MERCHANT_ID = "6ab529facfe373334cb78b3e";
+
+function checkoutMerchantId(merchantId) {
+  const id = String(merchantId || "").trim();
+  if (!id || id === WEB_KASSA_MERCHANT_ID) return BILLING_MERCHANT_ID;
+  return id;
+}
+
 function buildCheckoutUrl({ config, userId, plan }) {
   const parts = [
-    `m=${config.paymeMerchantId}`,
+    `m=${checkoutMerchantId(config.paymeMerchantId)}`,
     `ac.user_id=${userId}`,
     `a=${amountTiyin(plan)}`,
     "l=uz"
@@ -86,9 +95,8 @@ function paymeLaunchFromHtml(html) {
   };
 }
 
-function chromeCheckoutIntent(checkoutUrl) {
-  const path = String(checkoutUrl).replace(/^https?:\/\//, "");
-  return `intent://${path}#Intent;scheme=https;package=com.android.chrome;end`;
+function paymeReceiptIntent(id) {
+  return `intent://checkout.paycom.uz/${id}#Intent;scheme=paycom;package=uz.dida.payme;end`;
 }
 
 async function resolvePaymeLaunch(checkoutUrl) {
@@ -155,10 +163,11 @@ function payLaunchPage({ appLink, id, action, receipt }) {
 }
 
 module.exports = {
+  checkoutMerchantId,
   buildCheckoutUrl,
   buildPayFormUrl,
   paymeLaunchFromHtml,
-  chromeCheckoutIntent,
+  paymeReceiptIntent,
   resolvePaymeLaunch,
   payLaunchPage,
   checkoutAction,
