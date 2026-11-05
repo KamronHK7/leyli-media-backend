@@ -47,9 +47,17 @@ async function start() {
       setTimeout(tick, 15 * 1000).unref();
     }
   } catch (error) {
-    console.error("❌ Server ishga tushmadi:", error);
+    console.error("❌ Server ishga tushmadi:", error.message || error);
     process.exit(1);
   }
 }
+
+process.on("unhandledRejection", (reason) => {
+  const cause = reason && reason.error ? reason.error : reason;
+  console.error(
+    "❌ unhandledRejection:",
+    cause && cause.message ? cause.message : String(reason)
+  );
+});
 
 start();

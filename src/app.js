@@ -86,9 +86,23 @@ function createApp({ pool, config, notifier, webhookHandler }) {
   /* Mini app uchun API */
   app.use("/api", allowMiniAppCors, createApiRouter({ pool, config, notifier }));
 
-  /* Telegram webhook */
+  /* Telegram webhook — grammy handleUpdate xatoni tashlaydi; ushlamasak process yiqiladi */
   if (webhookHandler) {
-    app.post("/telegram/webhook", webhookHandler);
+    app.post("/telegram/webhook", async (req, res) => {
+      try {
+        await webhookHandler(req, res);
+      } catch (error) {
+        const cause = error && error.error ? error.error : error;
+        console.error(
+          "❌ WEBHOOK:",
+          cause && cause.message ? cause.message : "unknown"
+        );
+
+        if (!res.headersSent) {
+          res.sendStatus(200);
+        }
+      }
+    });
   }
 
   /*
@@ -105,7 +119,7 @@ function createApp({ pool, config, notifier, webhookHandler }) {
       const summary = await runExpiryJob({ pool, notifier, config });
       res.json({ ok: true, ...summary });
     } catch (error) {
-      console.error("❌ CRON:", error);
+      console.error("❌ CRON:", error.message || error);
       res.status(500).json({ ok: false, error: "server_error" });
     }
   });
@@ -201,7 +215,7 @@ function createApp({ pool, config, notifier, webhookHandler }) {
         : res.status(400).json({ ok: false, error: "invalid_json" });
     }
 
-    console.error("❌ SERVER ERROR:", err);
+    console.error("❌ SERVER ERROR:", err && err.message ? err.message : err);
 
     return isPayme
       ? rpcError(res, null, -32400, MESSAGES.systemError)

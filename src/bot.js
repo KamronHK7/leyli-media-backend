@@ -400,7 +400,11 @@ function createTelegram({ pool, config }) {
   });
 
   bot.catch((error) => {
-    console.error("❌ BOT ERROR:", error.message);
+    const cause = error && error.error ? error.error : error;
+    console.error(
+      "❌ BOT ERROR:",
+      cause && cause.message ? cause.message : "unknown"
+    );
   });
 
   const webhookHandler = webhookCallback(bot, "express", {
